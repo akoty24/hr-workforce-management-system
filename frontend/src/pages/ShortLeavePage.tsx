@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState, type FormEvent } from 'react'
 import { ApiError, api, errorMessage } from '../api'
-import type { Employee, LeaveStatus, ShortLeave, User } from '../types'
+import { managesHr, type Employee, type LeaveStatus, type ShortLeave, type User } from '../types'
 import { ErrorText, FieldError, Modal, PageHead, StatusBadge } from '../components/ui'
 import { formatDate, formatDuration, formatTime, localToday } from '../format'
 
@@ -25,7 +25,7 @@ function minutesBetween(from: string, to: string): number {
 }
 
 export function ShortLeavePage({ user }: { user: User }) {
-  const isAdmin = user.role === 'admin'
+  const isAdmin = managesHr(user)
   const isLeader = user.role === 'team_leader'
   const isOwn = (p: ShortLeave) => p.employee.id === user.employee?.id
   const canDecide = (p: ShortLeave) => (isAdmin || isLeader) && !isOwn(p)
@@ -194,7 +194,7 @@ export function ShortLeavePage({ user }: { user: User }) {
 }
 
 function PermissionForm({ user, onClose, onSaved }: { user: User; onClose: () => void; onSaved: () => void }) {
-  const isAdmin = user.role === 'admin'
+  const isAdmin = managesHr(user)
   const [today] = useState(localToday)
   const [employees, setEmployees] = useState<Employee[]>([])
   const [employeeId, setEmployeeId] = useState('')

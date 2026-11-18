@@ -70,7 +70,7 @@ class LeaveRequestController
         $employee = $this->resolveEmployee($user, $data['employee_id'] ?? null);
         $start = CarbonImmutable::parse($data['start_date']);
 
-        if (! $user->isAdmin() && $start->lt(CarbonImmutable::today())) {
+        if (! $user->managesHr() && $start->lt(CarbonImmutable::today())) {
             throw ValidationException::withMessages(['start_date' => 'Leave cannot start in the past.']);
         }
 

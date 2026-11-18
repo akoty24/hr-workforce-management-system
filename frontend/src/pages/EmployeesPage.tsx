@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState, type FormEvent } from 'react'
 import { ApiError, api, errorMessage } from '../api'
-import type { Department, Employee, EmployeeInput, EmployeeStatus, Paginated, User } from '../types'
+import { managesHr, type Department, type Employee, type EmployeeInput, type EmployeeStatus, type Paginated, type User } from '../types'
 import { ErrorText, FieldError, Modal, PageHead, StatusBadge } from '../components/ui'
 import { formatDate } from '../format'
 
@@ -12,7 +12,7 @@ const STATUSES: { value: EmployeeStatus; label: string }[] = [
 
 export function EmployeesPage({ user }: { user: User }) {
   // Team leaders get a read-only view of their direct reports (filtered server-side).
-  const isAdmin = user.role === 'admin'
+  const isAdmin = managesHr(user)
   const [result, setResult] = useState<Paginated<Employee> | null>(null)
   const [departments, setDepartments] = useState<Department[]>([])
   const [users, setUsers] = useState<User[]>([])

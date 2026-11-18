@@ -84,6 +84,9 @@ export function LoginPage({ tenant, onLogin }: Props) {
               <button type="button" className="link" onClick={() => setEmail('admin@demo.test')}>
                 admin@demo.test
               </button>
+              <button type="button" className="link" onClick={() => setEmail('hr@demo.test')}>
+                hr@demo.test
+              </button>
               <button type="button" className="link" onClick={() => setEmail('leader@demo.test')}>
                 leader@demo.test
               </button>

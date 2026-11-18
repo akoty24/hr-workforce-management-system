@@ -65,7 +65,7 @@ class ShortLeaveController
         $employee = $this->resolveEmployee($user, $data['employee_id'] ?? null);
         $date = CarbonImmutable::parse($data['date']);
 
-        if (! $user->isAdmin() && $date->lt(CarbonImmutable::today())) {
+        if (! $user->managesHr() && $date->lt(CarbonImmutable::today())) {
             throw ValidationException::withMessages(['date' => 'The date cannot be in the past.']);
         }
 

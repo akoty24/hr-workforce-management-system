@@ -30,11 +30,11 @@ interface NavItem {
 
 const NAV: NavItem[] = [
   { path: '/', label: 'Dashboard', icon: '▦' },
-  { path: '/employees', label: 'Employees', icon: '👥', roles: ['admin', 'team_leader'] },
-  { path: '/departments', label: 'Departments', icon: '🏢', roles: ['admin'] },
+  { path: '/employees', label: 'Employees', icon: '👥', roles: ['admin', 'hr', 'team_leader'] },
+  { path: '/departments', label: 'Departments', icon: '🏢', roles: ['admin', 'hr'] },
   { path: '/leave', label: 'Leave', icon: '🗓' },
   { path: '/permissions', label: 'Permissions', icon: '⏱' },
-  { path: '/leave-types', label: 'Leave types', icon: '⚙', roles: ['admin'] },
+  { path: '/leave-types', label: 'Leave types', icon: '⚙', roles: ['admin', 'hr'] },
   { path: '/users', label: 'Users', icon: '🔑', roles: ['admin'] },
   { path: '/account', label: 'My account', icon: '👤' },
 ]

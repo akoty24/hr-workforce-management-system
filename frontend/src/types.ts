@@ -3,12 +3,18 @@ export interface Tenant {
   slug: string
 }
 
-export type UserRole = 'admin' | 'team_leader' | 'employee'
+export type UserRole = 'admin' | 'hr' | 'team_leader' | 'employee'
 
 export const ROLE_LABELS: Record<UserRole, string> = {
   admin: 'Admin',
+  hr: 'HR',
   team_leader: 'Team leader',
   employee: 'Employee',
+}
+
+/** Admins and HR manage company HR data and decide every request. */
+export function managesHr(user: { role: UserRole }): boolean {
+  return user.role === 'admin' || user.role === 'hr'
 }
 
 export interface User {
@@ -157,7 +163,7 @@ export interface Paginated<T> {
 
 export type Dashboard =
   | {
-      role: 'admin'
+      role: 'overview'
       stats: {
         employees_total: number
         employees_active: number

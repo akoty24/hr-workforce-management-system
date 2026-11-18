@@ -1,13 +1,13 @@
 import { useCallback, useEffect, useState, type FormEvent } from 'react'
 import { ApiError, api, errorMessage } from '../api'
-import type { Department, User } from '../types'
+import { managesHr, type Department, type User } from '../types'
 import { ErrorText, FieldError, Modal, PageHead } from '../components/ui'
 
 export function DepartmentsPage({ user }: { user: User }) {
   const [departments, setDepartments] = useState<Department[] | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [editing, setEditing] = useState<Department | 'new' | null>(null)
-  const isAdmin = user.role === 'admin'
+  const isAdmin = managesHr(user)
 
   const load = useCallback(async () => {
     try {

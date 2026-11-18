@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState, type FormEvent } from 'react'
 import { ApiError, api, errorMessage } from '../api'
-import type { Employee, LeaveBalance, LeaveRequest, LeaveStatus, LeaveType, User } from '../types'
+import { managesHr, type Employee, type LeaveBalance, type LeaveRequest, type LeaveStatus, type LeaveType, type User } from '../types'
 import { ErrorText, FieldError, Modal, PageHead, StatusBadge } from '../components/ui'
 import { dateRange, formatDate, localToday } from '../format'
 import { Balances } from './DashboardPage'
@@ -16,7 +16,7 @@ const FILTERS: { value: LeaveStatus | ''; label: string }[] = [
 type Decision = { request: LeaveRequest; action: 'approve' | 'reject' }
 
 export function LeavePage({ user }: { user: User }) {
-  const isAdmin = user.role === 'admin'
+  const isAdmin = managesHr(user)
   const isLeader = user.role === 'team_leader'
   // Admins and team leaders decide requests of others (never their own).
   const canDecide = (r: LeaveRequest) => (isAdmin || isLeader) && r.employee.id !== user.employee?.id
@@ -200,7 +200,7 @@ export function LeavePage({ user }: { user: User }) {
 }
 
 function RequestForm({ user, onClose, onSaved }: { user: User; onClose: () => void; onSaved: () => void }) {
-  const isAdmin = user.role === 'admin'
+  const isAdmin = managesHr(user)
   const [today] = useState(localToday)
   const [types, setTypes] = useState<LeaveType[]>([])
   const [employees, setEmployees] = useState<Employee[]>([])

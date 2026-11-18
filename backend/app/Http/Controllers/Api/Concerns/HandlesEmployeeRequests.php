@@ -22,7 +22,7 @@ trait HandlesEmployeeRequests
      */
     protected function scopeToViewer(Builder $query, User $user, ?string $scope): void
     {
-        if ($scope === 'mine' || (! $user->isAdmin() && ! $user->isTeamLeader())) {
+        if ($scope === 'mine' || (! $user->managesHr() && ! $user->isTeamLeader())) {
             // Employees only ever see their own requests.
             $query->whereHas('employee', fn ($q) => $q->where('user_id', $user->id));
         } elseif ($scope === 'team' || $user->isTeamLeader()) {
@@ -42,7 +42,7 @@ trait HandlesEmployeeRequests
      */
     protected function resolveEmployee(User $user, ?string $employeeId): Employee
     {
-        if ($user->isAdmin() && $employeeId) {
+        if ($user->managesHr() && $employeeId) {
             return Employee::query()->findOrFail($employeeId);
         }
 
@@ -50,13 +50,13 @@ trait HandlesEmployeeRequests
 
         if (! $own) {
             throw ValidationException::withMessages([
-                'employee_id' => $user->isAdmin()
+                'employee_id' => $user->managesHr()
                     ? 'Select the employee this request is for.'
                     : 'Your account is not linked to an employee record. Ask an administrator.',
             ]);
         }
 
-        if (! $user->isAdmin() && $employeeId && $employeeId !== $own->id) {
+        if (! $user->managesHr() && $employeeId && $employeeId !== $own->id) {
             abort(403, 'You can only make requests for yourself.');
         }
 

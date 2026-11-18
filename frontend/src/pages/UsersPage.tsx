@@ -139,7 +139,8 @@ function UserForm({ user, isSelf, onClose, onSaved }: { user: User | null; isSel
           <select value={form.role} disabled={isSelf} onChange={(e) => setForm({ ...form, role: e.target.value as UserRole })}>
             <option value="employee">Employee — sees own data, requests leave</option>
             <option value="team_leader">Team leader — also approves leave of their direct reports</option>
-            <option value="admin">Admin — manages the company</option>
+            <option value="hr">HR — manages employees, departments, leave; decides all requests</option>
+            <option value="admin">Admin — everything, including user accounts and roles</option>
           </select>
           <FieldError message={errors?.field('role')} />
         </label>

@@ -30,6 +30,8 @@ class DatabaseSeeder extends Seeder
 
     public const DEMO_LEADER_EMAIL = 'leader@demo.test';
 
+    public const DEMO_HR_EMAIL = 'hr@demo.test';
+
     public const DEMO_PASSWORD = 'DemoPassword123';
 
     public function run(InstallTenant $install, TenantContext $context, LeaveService $leave): void
@@ -57,6 +59,13 @@ class DatabaseSeeder extends Seeder
                 'role' => UserRole::TeamLeader,
             ]);
 
+            $hrUser = User::create([
+                'name' => 'Sara Mahmoud',
+                'email' => self::DEMO_HR_EMAIL,
+                'password' => self::DEMO_PASSWORD,
+                'role' => UserRole::Hr,
+            ]);
+
             $departments = [];
             foreach ([
                 ['Human Resources', 'Recruitment, onboarding and employee relations.'],
@@ -70,7 +79,7 @@ class DatabaseSeeder extends Seeder
             $people = [
                 ['EMP-001', 'Mona', 'Hassan', 'Engineering', 'Software Engineer', '2022-03-01', EmployeeStatus::Active, $employeeUser->id],
                 ['EMP-002', 'Ahmed', 'Ali', 'Engineering', 'Engineering Manager', '2019-07-15', EmployeeStatus::Active, $leaderUser->id],
-                ['EMP-003', 'Sara', 'Mahmoud', 'Human Resources', 'HR Specialist', '2021-01-10', EmployeeStatus::Active, null],
+                ['EMP-003', 'Sara', 'Mahmoud', 'Human Resources', 'HR Specialist', '2021-01-10', EmployeeStatus::Active, $hrUser->id],
                 ['EMP-004', 'Omar', 'Khaled', 'Finance', 'Accountant', '2020-09-20', EmployeeStatus::Active, null],
                 ['EMP-005', 'Nour', 'Ibrahim', 'Sales', 'Account Executive', '2023-05-02', EmployeeStatus::Active, null],
                 ['EMP-006', 'Youssef', 'Adel', 'Sales', 'Sales Manager', '2018-11-11', EmployeeStatus::Active, null],

@@ -24,12 +24,12 @@ class DashboardController
         /** @var User $user */
         $user = $request->user();
 
-        if ($user->isAdmin()) {
+        if ($user->managesHr()) {
             $onLeaveToday = $this->onLeaveToday(LeaveRequest::query())->get();
             $pending = $this->pending(LeaveRequest::query())->limit(5)->get();
 
             return response()->json(['data' => [
-                'role' => 'admin',
+                'role' => 'overview', // admin / HR company view
                 'stats' => [
                     'employees_total' => Employee::query()->count(),
                     'employees_active' => Employee::query()->where('status', EmployeeStatus::Active)->count(),

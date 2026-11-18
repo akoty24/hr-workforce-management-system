@@ -68,6 +68,20 @@ class User extends Authenticatable
         return $this->role === UserRole::Admin;
     }
 
+    public function isHr(): bool
+    {
+        return $this->role === UserRole::Hr;
+    }
+
+    /**
+     * Admins and HR manage company HR data and decide every request.
+     * Only admins manage user accounts and roles.
+     */
+    public function managesHr(): bool
+    {
+        return $this->isAdmin() || $this->isHr();
+    }
+
     public function isTeamLeader(): bool
     {
         return $this->role === UserRole::TeamLeader;

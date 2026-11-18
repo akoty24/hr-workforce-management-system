@@ -247,7 +247,7 @@ class LeaveTest extends TestCase
         $this->actingAs($this->admin, 'web');
         $this->getJson('/api/v1/dashboard')
             ->assertOk()
-            ->assertJsonPath('data.role', 'admin')
+            ->assertJsonPath('data.role', 'overview')
             ->assertJsonPath('data.stats.employees_total', 2)
             ->assertJsonPath('data.stats.pending_requests', 1);
     }

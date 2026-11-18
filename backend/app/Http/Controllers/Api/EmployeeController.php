@@ -36,7 +36,7 @@ class EmployeeController
             Employee::query()
                 ->with(self::RELATIONS)
                 // Team leaders only see their direct reports.
-                ->unless($user->isAdmin(), fn ($q) => $q->where('manager_id', $user->employee?->id ?? '-'))
+                ->unless($user->managesHr(), fn ($q) => $q->where('manager_id', $user->employee?->id ?? '-'))
                 ->search($filters['search'] ?? null)
                 ->when($filters['department_id'] ?? null, fn ($q, $id) => $q->where('department_id', $id))
                 ->when($filters['status'] ?? null, fn ($q, $status) => $q->where('status', $status))

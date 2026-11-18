@@ -13,7 +13,7 @@ class ShortLeavePolicy
 {
     public function view(User $user, ShortLeave $shortLeave): bool
     {
-        return $user->isAdmin() || $this->owns($user, $shortLeave) || $user->leads($shortLeave->employee);
+        return $user->managesHr() || $this->owns($user, $shortLeave) || $user->leads($shortLeave->employee);
     }
 
     public function decide(User $user, ShortLeave $shortLeave): bool
@@ -22,12 +22,12 @@ class ShortLeavePolicy
             return false;
         }
 
-        return $user->isAdmin() || $user->leads($shortLeave->employee);
+        return $user->managesHr() || $user->leads($shortLeave->employee);
     }
 
     public function cancel(User $user, ShortLeave $shortLeave): bool
     {
-        return $user->isAdmin() || $this->owns($user, $shortLeave);
+        return $user->managesHr() || $this->owns($user, $shortLeave);
     }
 
     private function owns(User $user, ShortLeave $shortLeave): bool

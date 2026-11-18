@@ -23,16 +23,16 @@ class DepartmentPolicy
 
     public function create(User $user): bool
     {
-        return $user->isAdmin();
+        return $user->managesHr();
     }
 
     public function update(User $user, Department $department): bool
     {
-        return $user->isAdmin();
+        return $user->managesHr();
     }
 
     public function delete(User $user, Department $department): bool
     {
-        return $user->isAdmin();
+        return $user->managesHr();
     }
 }

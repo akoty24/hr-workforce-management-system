@@ -19,7 +19,7 @@ class LeaveTypeController
 
         return LeaveTypeResource::collection(
             LeaveType::query()
-                ->unless($request->user()->isAdmin(), fn ($q) => $q->where('is_active', true))
+                ->unless($request->user()->managesHr(), fn ($q) => $q->where('is_active', true))
                 ->orderBy('name')
                 ->get(),
         );

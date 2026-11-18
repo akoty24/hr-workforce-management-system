@@ -25,7 +25,7 @@ export function DashboardPage({ user }: { user: User }) {
   if (error) return <ErrorText message={error} />
   if (!dashboard) return <p className="muted">Loading…</p>
 
-  if (dashboard.role === 'admin') {
+  if (dashboard.role === 'overview') {
     const s = dashboard.stats
     return (
       <>

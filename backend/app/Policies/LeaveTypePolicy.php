@@ -14,16 +14,16 @@ class LeaveTypePolicy
 
     public function create(User $user): bool
     {
-        return $user->isAdmin();
+        return $user->managesHr();
     }
 
     public function update(User $user, LeaveType $type): bool
     {
-        return $user->isAdmin();
+        return $user->managesHr();
     }
 
     public function delete(User $user, LeaveType $type): bool
     {
-        return $user->isAdmin();
+        return $user->managesHr();
     }
 }

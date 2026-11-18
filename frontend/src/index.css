@@ -317,7 +317,7 @@ td {
   text-align: left;
   padding: 12px 20px;
   border-bottom: 1px solid var(--border);
-  vertical-align: top;
+  vertical-align: middle;
 }
 
 th {
@@ -332,10 +332,14 @@ th {
   width: 140px;
 }
 
-.actions {
-  display: flex;
-  gap: 16px;
-  justify-content: flex-end;
+/* Stays a table cell (display:flex on a <td> breaks row alignment). */
+td.actions {
+  text-align: right;
+  white-space: nowrap;
+}
+
+td.actions > * + * {
+  margin-left: 16px;
 }
 
 .table-foot {
@@ -836,10 +840,20 @@ button.tab.active {
   color: #5925dc;
 }
 
+.role-hr {
+  background: #ecfdf3;
+  color: #067647;
+}
+
 @media (prefers-color-scheme: dark) {
   .role-team_leader {
     background: #221a3d;
     color: #a48afb;
+  }
+
+  .role-hr {
+    background: #0f2a1d;
+    color: #75e0a7;
   }
 }
 

@@ -15,7 +15,7 @@ class LeaveRequestPolicy
 {
     public function view(User $user, LeaveRequest $request): bool
     {
-        return $user->isAdmin() || $this->owns($user, $request) || $user->leads($request->employee);
+        return $user->managesHr() || $this->owns($user, $request) || $user->leads($request->employee);
     }
 
     public function decide(User $user, LeaveRequest $request): bool
@@ -24,12 +24,12 @@ class LeaveRequestPolicy
             return false; // nobody approves their own leave
         }
 
-        return $user->isAdmin() || $user->leads($request->employee);
+        return $user->managesHr() || $user->leads($request->employee);
     }
 
     public function cancel(User $user, LeaveRequest $request): bool
     {
-        return $user->isAdmin() || $this->owns($user, $request);
+        return $user->managesHr() || $this->owns($user, $request);
     }
 
     private function owns(User $user, LeaveRequest $request): bool

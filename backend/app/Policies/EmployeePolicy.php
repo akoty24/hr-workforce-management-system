@@ -15,26 +15,26 @@ class EmployeePolicy
 {
     public function viewAny(User $user): bool
     {
-        return $user->isAdmin() || $user->isTeamLeader();
+        return $user->managesHr() || $user->isTeamLeader();
     }
 
     public function view(User $user, Employee $employee): bool
     {
-        return $user->isAdmin() || $employee->user_id === $user->id || $user->leads($employee);
+        return $user->managesHr() || $employee->user_id === $user->id || $user->leads($employee);
     }
 
     public function create(User $user): bool
     {
-        return $user->isAdmin();
+        return $user->managesHr();
     }
 
     public function update(User $user, Employee $employee): bool
     {
-        return $user->isAdmin();
+        return $user->managesHr();
     }
 
     public function delete(User $user, Employee $employee): bool
     {
-        return $user->isAdmin();
+        return $user->managesHr();
     }
 }
