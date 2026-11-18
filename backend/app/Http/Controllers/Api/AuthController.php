@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Resources\UserResource;
+use App\Models\User;
 use App\Tenancy\TenantContext;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -41,18 +42,23 @@ class AuthController
             ])->status(429);
         }
 
-        if (! Auth::guard('web')->attempt(['email' => $email, 'password' => $credentials['password']])) {
+        $authenticated = Auth::guard('web')->attemptWhen(
+            ['email' => $email, 'password' => $credentials['password']],
+            fn (User $user) => $user->is_active,
+        );
+
+        if (! $authenticated) {
             RateLimiter::hit($throttleKey, self::DECAY_SECONDS);
 
             throw ValidationException::withMessages([
-                'email' => 'These credentials do not match our records.',
+                'email' => 'These credentials do not match our records, or the account is disabled.',
             ]);
         }
 
         RateLimiter::clear($throttleKey);
         $request->session()->regenerate(); // prevent session fixation
 
-        return new UserResource($request->user());
+        return new UserResource($request->user()->load('employee'));
     }
 
     public function logout(Request $request): Response
@@ -66,7 +72,7 @@ class AuthController
 
     public function me(Request $request): UserResource
     {
-        return new UserResource($request->user());
+        return new UserResource($request->user()->load('employee'));
     }
 
     /**

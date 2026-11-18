@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Requests\DepartmentRequest;
 use App\Http\Resources\DepartmentResource;
 use App\Models\Department;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Gate;
@@ -21,7 +22,7 @@ class DepartmentController
         Gate::authorize('viewAny', Department::class);
 
         return DepartmentResource::collection(
-            Department::query()->orderBy('name')->paginate(100),
+            Department::query()->withCount('employees')->orderBy('name')->paginate(100),
         );
     }
 
@@ -48,9 +49,15 @@ class DepartmentController
         return new DepartmentResource($department);
     }
 
-    public function destroy(Department $department): Response
+    public function destroy(Department $department): Response|JsonResponse
     {
         Gate::authorize('delete', $department);
+
+        if ($department->employees()->exists()) {
+            return response()->json([
+                'message' => 'This department still has employees. Move them to another department first.',
+            ], 409);
+        }
 
         $department->delete();
 

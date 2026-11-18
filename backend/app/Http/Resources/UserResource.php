@@ -21,6 +21,12 @@ class UserResource extends JsonResource
             'name' => $this->name,
             'email' => $this->email,
             'role' => $this->role->value,
+            'is_active' => $this->is_active,
+            'created_at' => $this->created_at?->toIso8601String(),
+            'employee' => $this->whenLoaded('employee', fn () => $this->employee ? [
+                'id' => $this->employee->id,
+                'full_name' => $this->employee->full_name,
+            ] : null),
         ];
     }
 }

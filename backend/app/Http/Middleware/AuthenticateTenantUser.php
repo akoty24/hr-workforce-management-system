@@ -29,7 +29,8 @@ class AuthenticateTenantUser
             return $this->unauthenticated();
         }
 
-        if ($user->getAttribute('tenant_id') !== $this->context->id()) {
+        // Wrong tenant, or the account was deactivated after signing in.
+        if ($user->getAttribute('tenant_id') !== $this->context->id() || ! $user->getAttribute('is_active')) {
             // Drop the session without writing to the foreign user's record
             // (logout() would rotate its remember token, i.e. a cross-tenant write).
             $guard->forgetUser();
