@@ -19,7 +19,7 @@ class Tenant extends Model
 {
     use HasUuids; // UUIDv7 in Laravel 12
 
-    protected $fillable = ['slug', 'name', 'status'];
+    protected $fillable = ['slug', 'name', 'status', 'settings'];
 
     protected $attributes = [
         'status' => 'active',
@@ -29,6 +29,7 @@ class Tenant extends Model
     {
         return [
             'status' => TenantStatus::class,
+            'settings' => 'array',
         ];
     }
 

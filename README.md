@@ -27,8 +27,9 @@ php artisan key:generate
 php artisan migrate --seed      # demo company + accounts + departments
 cd ../frontend && npm install
 
-# every time (two terminals)
+# every time (three terminals)
 cd backend  && php artisan serve    # http://127.0.0.1:8000
+cd backend  && php artisan queue:work   # sends e-mails (queued)
 cd frontend && npm run dev          # http://localhost:5173  ← open this
 ```
 
@@ -38,6 +39,24 @@ Production-like: `npm run build` in `frontend/` writes the SPA into `backend/pub
 
 Tests: `cd backend && php artisan test` (uses the `hr_workforce_testing` database).
 
+## E-mail (SMTP)
+
+Request and decision e-mails are queued; a `queue:work` process must run. Put the SMTP settings in `backend/.env` (never commit them), e.g. Gmail with an App Password:
+
+```
+MAIL_MAILER=smtp
+MAIL_SCHEME=smtp
+MAIL_HOST=smtp.gmail.com
+MAIL_PORT=587
+MAIL_USERNAME=you@gmail.com
+MAIL_PASSWORD=your-16-char-app-password
+MAIL_FROM_ADDRESS=you@gmail.com
+MAIL_FROM_NAME="HR Workforce"
+APP_URL=http://localhost:5173      # links in e-mails
+```
+
+Then restart `php artisan serve` and `php artisan queue:work`. With `MAIL_MAILER=log` e-mails are written to `storage/logs/laravel.log`.
+
 ## Status
 
-Implemented: multi-tenancy, authentication, users, departments, employees, leave management, dashboard, SPA, deployment files. See [docs/architecture.md](docs/architecture.md#implementation-plan) and [docs/deployment.md](docs/deployment.md).
+Implemented: multi-tenancy, authentication, roles (admin / HR / team leader / employee), departments, employees, leave (proration, holidays), hourly permissions, attendance with location, salary history, reports with Excel export, e-mail notifications, company settings, dashboard, SPA, deployment files. See [docs/architecture.md](docs/architecture.md#implementation-plan) and [docs/deployment.md](docs/deployment.md).

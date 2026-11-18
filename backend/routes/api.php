@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Api\AccountController;
+use App\Http\Controllers\Api\AttendanceController;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\DashboardController;
 use App\Http\Controllers\Api\DepartmentController;
@@ -9,6 +10,9 @@ use App\Http\Controllers\Api\HolidayController;
 use App\Http\Controllers\Api\LeaveBalanceController;
 use App\Http\Controllers\Api\LeaveRequestController;
 use App\Http\Controllers\Api\LeaveTypeController;
+use App\Http\Controllers\Api\ReportController;
+use App\Http\Controllers\Api\SalaryController;
+use App\Http\Controllers\Api\SettingsController;
 use App\Http\Controllers\Api\ShortLeaveController;
 use App\Http\Controllers\Api\UserController;
 use Illuminate\Support\Facades\Route;
@@ -43,6 +47,24 @@ Route::middleware('tenant.auth')->group(function () {
     Route::post('/leave-requests/{leave_request}/approve', [LeaveRequestController::class, 'approve'])->name('leave-requests.approve');
     Route::post('/leave-requests/{leave_request}/reject', [LeaveRequestController::class, 'reject'])->name('leave-requests.reject');
     Route::post('/leave-requests/{leave_request}/cancel', [LeaveRequestController::class, 'cancel'])->name('leave-requests.cancel');
+
+    // Attendance (check-in / check-out with location).
+    Route::get('/attendance/today', [AttendanceController::class, 'today'])->name('attendance.today');
+    Route::post('/attendance/check-in', [AttendanceController::class, 'checkIn'])->name('attendance.check-in');
+    Route::post('/attendance/check-out', [AttendanceController::class, 'checkOut'])->name('attendance.check-out');
+    Route::get('/attendance', [AttendanceController::class, 'index'])->name('attendance.index');
+    Route::post('/attendance', [AttendanceController::class, 'store'])->name('attendance.store');
+    Route::put('/attendance/{attendance}', [AttendanceController::class, 'update'])->name('attendance.update');
+
+    // Salary history.
+    Route::get('/employees/{employee}/salaries', [SalaryController::class, 'index'])->name('salaries.index');
+    Route::post('/employees/{employee}/salaries', [SalaryController::class, 'store'])->name('salaries.store');
+    Route::delete('/salaries/{salary}', [SalaryController::class, 'destroy'])->name('salaries.destroy');
+
+    // Company settings and reports.
+    Route::get('/settings', [SettingsController::class, 'show'])->name('settings.show');
+    Route::put('/settings', [SettingsController::class, 'update'])->name('settings.update');
+    Route::get('/reports/{type}', ReportController::class)->name('reports.show');
 
     // Hourly permissions.
     // Explicit name: Laravel would singularise "leaves" to {short_leaf}.

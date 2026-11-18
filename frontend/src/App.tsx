@@ -9,6 +9,9 @@ import { DashboardPage } from './pages/DashboardPage'
 import { EmployeesPage } from './pages/EmployeesPage'
 import { DepartmentsPage } from './pages/DepartmentsPage'
 import { ShortLeavePage } from './pages/ShortLeavePage'
+import { AttendancePage } from './pages/AttendancePage'
+import { ReportsPage } from './pages/ReportsPage'
+import { SettingsPage } from './pages/SettingsPage'
 import { HolidaysPage } from './pages/HolidaysPage'
 import { LeavePage } from './pages/LeavePage'
 import { LeaveTypesPage } from './pages/LeaveTypesPage'
@@ -33,11 +36,14 @@ const NAV: NavItem[] = [
   { path: '/', label: 'Dashboard', icon: '▦' },
   { path: '/employees', label: 'Employees', icon: '👥', roles: ['admin', 'hr', 'team_leader'] },
   { path: '/departments', label: 'Departments', icon: '🏢', roles: ['admin', 'hr'] },
+  { path: '/attendance', label: 'Attendance', icon: '🕘' },
   { path: '/leave', label: 'Leave', icon: '🗓' },
   { path: '/permissions', label: 'Permissions', icon: '⏱' },
   { path: '/holidays', label: 'Holidays', icon: '🎉' },
   { path: '/leave-types', label: 'Leave types', icon: '⚙', roles: ['admin', 'hr'] },
+  { path: '/reports', label: 'Reports', icon: '📊', roles: ['admin', 'hr'] },
   { path: '/users', label: 'Users', icon: '🔑', roles: ['admin'] },
+  { path: '/settings', label: 'Settings', icon: '🛠', roles: ['admin', 'hr'] },
   { path: '/account', label: 'My account', icon: '👤' },
 ]
 
@@ -144,6 +150,15 @@ export default function App() {
       break
     case '/leave':
       page = <LeavePage user={user} />
+      break
+    case '/attendance':
+      page = <AttendancePage user={user} />
+      break
+    case '/reports':
+      page = <ReportsPage />
+      break
+    case '/settings':
+      page = <SettingsPage />
       break
     case '/holidays':
       page = <HolidaysPage user={user} />

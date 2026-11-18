@@ -206,3 +206,60 @@ export type Dashboard =
       team?: { size: number; pending_requests: LeaveRequest[]; on_leave_today: LeaveRequest[]; pending_permissions: number }
       upcoming_holidays: UpcomingHoliday[]
     }
+
+export interface GeoPoint {
+  latitude: number
+  longitude: number
+  accuracy: number | null
+}
+
+export interface AttendanceRecord {
+  id: string
+  employee: { id: string; full_name: string; employee_code: string } | null
+  date: string
+  /** Company-local HH:MM */
+  check_in: string | null
+  check_out: string | null
+  check_in_location: GeoPoint | null
+  check_out_location: GeoPoint | null
+  late_minutes: number
+  worked_minutes: number | null
+  note: string | null
+  edited_by: string | null
+}
+
+export interface CompanySettings {
+  timezone: string
+  work_start: string
+  work_end: string
+  grace_minutes: number
+  require_location: boolean
+}
+
+export interface AttendanceToday {
+  date: string
+  record: AttendanceRecord | null
+  schedule: CompanySettings
+}
+
+export interface SalaryEntry {
+  id: string
+  amount: number
+  currency: string
+  effective_from: string
+  note: string | null
+  created_by: string | null
+}
+
+export interface SalaryHistory {
+  current: SalaryEntry | null
+  history: SalaryEntry[]
+}
+
+export type ReportType = 'summary' | 'attendance' | 'leave' | 'permissions' | 'salaries'
+
+export interface Report {
+  title: string
+  headers: string[]
+  rows: (string | number | null)[][]
+}

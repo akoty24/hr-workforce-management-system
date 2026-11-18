@@ -319,6 +319,11 @@ Subscription billing, multi-tenant on-prem, Octane, licensing/activation for on-
 - Hourly permissions (`short_leaves`): one working day, from/to time (HH:MM), max `HR_SHORT_LEAVE_MAX_MINUTES` (120); no overlap with another permission or a leave day; same approval rules as leave; not deducted from leave balance.
 - Roles: `admin` (everything, plus user accounts and roles), `hr` (employees, departments, leave types, holidays; decides all requests; may list but not change accounts), `team_leader` (direct reports; final decision on their requests), `employee`. Code: `User::managesHr()` = admin or HR.
 - Public holidays (`holidays`, ranges): excluded from leave working days and blocked for hourly permissions. Existing requests are not recalculated when holidays change.
+- Attendance (`attendances`): one row per employee per company-local day; check-in/out timestamps in UTC with browser geolocation (lat/lng/accuracy; required unless disabled in Settings). Lateness = minutes after `work_start` when beyond the grace period (not on weekends/holidays). HR/admin add or correct records (`edited_by`).
+- Company settings: `tenants.settings` JSON (time zone, work start/end, grace, require location); default time zone `HR_TIMEZONE`.
+- Salaries (`salaries`): history with `effective_from`; current = latest effective on a date. Visible to admin/HR and the employee themselves, not team leaders.
+- Reports (admin/HR): summary, attendance, leave, permissions, salaries for a date range and department; JSON preview or `.xlsx` (`App\Reports\XlsxWriter`, needs ext-zip).
+- E-mail notifications (queued, after commit): new request -> team leader, else active admins + HR; decision -> employee (account e-mail, else employee record e-mail).
 - Departments page is admin/HR-only in the UI (the list API stays readable for filters).
 - Dashboard: admin overview and employee self-service.
 

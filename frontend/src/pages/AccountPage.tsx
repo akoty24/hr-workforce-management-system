@@ -2,6 +2,7 @@ import { useState, type FormEvent } from 'react'
 import { ApiError, api, errorMessage } from '../api'
 import { ROLE_LABELS, type User } from '../types'
 import { ErrorText, FieldError, PageHead } from '../components/ui'
+import { SalaryPanel } from '../components/SalaryPanel'
 
 export function AccountPage({ user }: { user: User }) {
   const [current, setCurrent] = useState('')
@@ -77,6 +78,12 @@ export function AccountPage({ user }: { user: User }) {
           </div>
         </form>
       </div>
+      {user.employee && (
+        <div className="card section-top">
+          <h2>My salary</h2>
+          <SalaryPanel employeeId={user.employee.id} canEdit={false} />
+        </div>
+      )}
     </section>
   )
 }

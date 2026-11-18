@@ -868,3 +868,70 @@ button.tab.active {
 .section {
   margin-bottom: 28px;
 }
+
+/* ---------- attendance ---------- */
+
+.punch {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+  margin-bottom: 20px;
+}
+
+.punch-status {
+  font-size: 1.15rem;
+  margin: 4px 0;
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.punch-button {
+  font-size: 1.1rem;
+  padding: 14px 32px;
+  min-width: 180px;
+}
+
+label.inline {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 8px;
+  font-weight: 500;
+}
+
+/* ---------- reports / misc ---------- */
+
+.table-scroll {
+  overflow-x: auto;
+}
+
+.table-scroll.loading {
+  opacity: 0.6;
+}
+
+table.compact td,
+table.compact th {
+  padding: 8px 10px;
+}
+
+.success {
+  color: var(--ok);
+  margin: 0;
+}
+
+.narrow-form {
+  max-width: 720px;
+}
+
+.section-top {
+  margin-top: 20px;
+}
+
+h3 {
+  margin: 8px 0 0;
+  font-size: 1rem;
+}

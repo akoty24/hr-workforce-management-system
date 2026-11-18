@@ -27,3 +27,12 @@ export function formatDuration(minutes: number): string {
   const m = minutes % 60
   return [h && `${h}h`, m && `${m}m`].filter(Boolean).join(' ') || '0m'
 }
+
+/** 12500.5, "EGP" -> "EGP 12,500.50" */
+export function formatMoney(amount: number, currency: string): string {
+  try {
+    return new Intl.NumberFormat(undefined, { style: 'currency', currency, minimumFractionDigits: 2 }).format(amount)
+  } catch {
+    return `${currency} ${amount.toFixed(2)}`
+  }
+}

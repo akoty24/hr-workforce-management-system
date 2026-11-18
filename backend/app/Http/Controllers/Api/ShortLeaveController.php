@@ -8,6 +8,7 @@ use App\Leave\ShortLeaveService;
 use App\Models\LeaveStatus;
 use App\Models\ShortLeave;
 use App\Models\User;
+use App\Notifications\RequestNotifier;
 use App\Tenancy\Validation\TenantRule;
 use Carbon\CarbonImmutable;
 use Illuminate\Http\JsonResponse;
@@ -26,7 +27,10 @@ class ShortLeaveController
 
     private const RELATIONS = ['employee', 'decider'];
 
-    public function __construct(private readonly ShortLeaveService $shortLeaves) {}
+    public function __construct(
+        private readonly ShortLeaveService $shortLeaves,
+        private readonly RequestNotifier $notifier,
+    ) {}
 
     public function index(Request $request): AnonymousResourceCollection
     {
@@ -77,6 +81,8 @@ class ShortLeaveController
             filled($data['reason'] ?? null) ? trim($data['reason']) : null,
         );
 
+        $this->notifier->submitted($shortLeave);
+
         return (new ShortLeaveResource($shortLeave->load(self::RELATIONS)))->response()->setStatusCode(201);
     }
 
@@ -121,6 +127,7 @@ class ShortLeaveController
         }
 
         $this->shortLeaves->decide($shortLeave, $request->user(), $status, filled($data['note'] ?? null) ? trim($data['note']) : null);
+        $this->notifier->decided($shortLeave->load(self::RELATIONS));
 
         return new ShortLeaveResource($shortLeave->load(self::RELATIONS));
     }

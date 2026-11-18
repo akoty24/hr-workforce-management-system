@@ -9,6 +9,7 @@ use App\Models\LeaveRequest;
 use App\Models\LeaveStatus;
 use App\Models\LeaveType;
 use App\Models\User;
+use App\Notifications\RequestNotifier;
 use App\Tenancy\Validation\TenantRule;
 use Carbon\CarbonImmutable;
 use Illuminate\Http\JsonResponse;
@@ -24,7 +25,10 @@ class LeaveRequestController
 
     private const RELATIONS = ['employee', 'leaveType', 'decider'];
 
-    public function __construct(private readonly LeaveService $leave) {}
+    public function __construct(
+        private readonly LeaveService $leave,
+        private readonly RequestNotifier $notifier,
+    ) {}
 
     public function index(Request $request): AnonymousResourceCollection
     {
@@ -82,6 +86,8 @@ class LeaveRequestController
             filled($data['reason'] ?? null) ? trim($data['reason']) : null,
         );
 
+        $this->notifier->submitted($leaveRequest);
+
         return (new LeaveRequestResource($leaveRequest->load(self::RELATIONS)))->response()->setStatusCode(201);
     }
 
@@ -126,6 +132,7 @@ class LeaveRequestController
         }
 
         $this->leave->decide($leaveRequest, $request->user(), $status, filled($data['note'] ?? null) ? trim($data['note']) : null);
+        $this->notifier->decided($leaveRequest->load(self::RELATIONS));
 
         return new LeaveRequestResource($leaveRequest->load(self::RELATIONS));
     }

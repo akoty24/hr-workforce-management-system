@@ -1,4 +1,11 @@
 import type {
+  AttendanceRecord,
+  AttendanceToday,
+  CompanySettings,
+  Report,
+  ReportType,
+  SalaryEntry,
+  SalaryHistory,
   Dashboard,
   Department,
   DepartmentInput,
@@ -125,6 +132,40 @@ export const api = {
     list: () => data(request<{ data: User[] }>('GET', '/users')),
     create: (input: UserInput) => data(request<{ data: User }>('POST', '/users', input)),
     update: (id: string, input: UserInput) => data(request<{ data: User }>('PUT', `/users/${id}`, input)),
+  },
+
+  attendance: {
+    today: () => data(request<{ data: AttendanceToday }>('GET', '/attendance/today')),
+    checkIn: (location: { latitude?: number; longitude?: number; accuracy?: number }) =>
+      data(request<{ data: AttendanceRecord }>('POST', '/attendance/check-in', location)),
+    checkOut: (location: { latitude?: number; longitude?: number; accuracy?: number }) =>
+      data(request<{ data: AttendanceRecord }>('POST', '/attendance/check-out', location)),
+    list: (params: { from?: string; to?: string; employee_id?: string; scope?: 'mine' | 'team' }) =>
+      data(request<{ data: AttendanceRecord[] }>('GET', `/attendance${query(params)}`)),
+    create: (input: { employee_id: string; date: string; check_in: string; check_out: string | null; note: string | null }) =>
+      data(request<{ data: AttendanceRecord }>('POST', '/attendance', input)),
+    update: (id: string, input: { check_in: string; check_out: string | null; note: string | null }) =>
+      data(request<{ data: AttendanceRecord }>('PUT', `/attendance/${id}`, input)),
+  },
+
+  salaries: {
+    list: (employeeId: string) => data(request<{ data: SalaryHistory }>('GET', `/employees/${employeeId}/salaries`)),
+    create: (employeeId: string, input: { amount: number; currency: string; effective_from: string; note: string | null }) =>
+      data(request<{ data: SalaryEntry }>('POST', `/employees/${employeeId}/salaries`, input)),
+    remove: (id: string) => request<void>('DELETE', `/salaries/${id}`),
+  },
+
+  settings: {
+    get: () => data(request<{ data: CompanySettings }>('GET', '/settings')),
+    update: (input: CompanySettings) => data(request<{ data: CompanySettings }>('PUT', '/settings', input)),
+  },
+
+  reports: {
+    get: (type: ReportType, params: { from: string; to: string; department_id?: string }) =>
+      data(request<{ data: Report }>('GET', `/reports/${type}${query(params)}`)),
+    /** Same-origin link; the session cookie authenticates the download. */
+    downloadUrl: (type: ReportType, params: { from: string; to: string; department_id?: string }) =>
+      `/api/v1/reports/${type}${query({ ...params, format: 'xlsx' })}`,
   },
 
   holidays: {

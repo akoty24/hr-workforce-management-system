@@ -18,4 +18,10 @@ return [
     */
     'short_leave_max_minutes' => (int) env('HR_SHORT_LEAVE_MAX_MINUTES', 120),
 
+    /*
+    | Default company time zone (attendance day, lateness). Each company can
+    | change it in Settings. Example: Africa/Cairo
+    */
+    'timezone' => env('HR_TIMEZONE', 'Africa/Cairo'),
+
 ];

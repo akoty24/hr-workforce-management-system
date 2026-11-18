@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState, type FormEvent } from 'react'
 import { ApiError, api, errorMessage } from '../api'
 import { managesHr, type Department, type Employee, type EmployeeInput, type EmployeeStatus, type Paginated, type User } from '../types'
 import { ErrorText, FieldError, Modal, PageHead, StatusBadge } from '../components/ui'
+import { SalaryPanel } from '../components/SalaryPanel'
 import { formatDate } from '../format'
 
 const STATUSES: { value: EmployeeStatus; label: string }[] = [
@@ -22,6 +23,7 @@ export function EmployeesPage({ user }: { user: User }) {
   const [page, setPage] = useState(1)
   const [error, setError] = useState<string | null>(null)
   const [editing, setEditing] = useState<Employee | 'new' | null>(null)
+  const [salaryOf, setSalaryOf] = useState<Employee | null>(null)
 
   const load = useCallback(async () => {
     try {
@@ -133,6 +135,9 @@ export function EmployeesPage({ user }: { user: User }) {
                   </td>
                   {isAdmin && (
                     <td className="actions">
+                      <button className="link" onClick={() => setSalaryOf(e)}>
+                        Salary
+                      </button>
                       <button className="link" onClick={() => setEditing(e)}>
                         Edit
                       </button>
@@ -162,6 +167,12 @@ export function EmployeesPage({ user }: { user: User }) {
             )}
           </div>
         </div>
+      )}
+
+      {salaryOf && (
+        <Modal title={`Salary — ${salaryOf.full_name}`} onClose={() => setSalaryOf(null)}>
+          <SalaryPanel employeeId={salaryOf.id} canEdit={isAdmin} />
+        </Modal>
       )}
 
       {editing && (
