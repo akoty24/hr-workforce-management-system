@@ -123,4 +123,20 @@ return [
         'store' => env('APP_MAINTENANCE_STORE', 'database'),
     ],
 
+    /*
+    |--------------------------------------------------------------------------
+    | Trusted Proxies
+    |--------------------------------------------------------------------------
+    |
+    | Proxies/load balancers allowed to set X-Forwarded-* headers. Required when
+    | TLS is terminated in front of the app (Railway, most PaaS, reverse proxies)
+    | so Laravel generates https URLs and secure cookies correctly.
+    |
+    | Values: empty (trust none), "*" (trust the immediate upstream), or a
+    | comma-separated list of IPs/CIDRs, e.g. "10.0.0.0/8,172.16.0.0/12".
+    |
+    */
+
+    'trusted_proxies' => env('TRUSTED_PROXIES'),
+
 ];

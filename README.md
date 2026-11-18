@@ -2,7 +2,7 @@
 
 Multi-tenant HR & workforce management platform. One codebase, two deployment models:
 
-- **Cloud SaaS** — many companies, shared PostgreSQL, tenant isolation by `tenant_id`, per-tenant subdomains.
+- **Cloud SaaS** — many companies, shared MySQL 8.4 LTS, tenant isolation by `tenant_id`, per-tenant subdomains.
 - **On-premises** — dedicated install on customer infrastructure, single tenant, same code/schema/migrations.
 
 ## Repository layout
