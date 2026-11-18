@@ -114,7 +114,7 @@ Implemented in step 3 — see the [tenancy developer guide](tenancy.md) for usag
 ### 4.4 Users and administrators
 
 - `users` are tenant-scoped; email unique per tenant. The tenant is known before login (subdomain in SaaS, single tenant on-prem).
-- Roles inside a company: `admin` (manages data) and `employee` (read access). Authorization uses Laravel policies.
+- Roles inside a company: `admin` (manages everything), `team_leader` (employee who sees their direct reports read-only and makes the final decision on their leave), `employee` (own data). Teams are defined by each employee’s direct manager (`employees.manager_id`, “reports to”); nobody approves their own leave; admins can decide any request. Authorization uses Laravel policies.
 - Platform administrators (SaaS operators) will live in a separate table with a separate guard and are only routable when `PLATFORM_FEATURES_ENABLED=true` (not built yet).
 
 ### 4.5 Tenant provisioning
@@ -311,7 +311,8 @@ Subscription billing, multi-tenant on-prem, Octane, licensing/activation for on-
 
 ### Modules delivered after the foundation
 
-- Users: admin-managed accounts, roles (admin/employee), deactivation, own password change.
+- Users: admin-managed accounts, roles (admin/team leader/employee), deactivation, own password change.
+- Team leaders: reporting lines (“reports to”, cycle-checked); team view; final approval of direct reports’ leave.
 - Employees: records with department and optional sign-in account; search, filters, pagination.
 - Leave: types with annual allowance; requests in working days (`HR_WEEKEND_DAYS`); overlap/balance checks; approve/reject/cancel; balances.
 - Dashboard: admin overview and employee self-service.

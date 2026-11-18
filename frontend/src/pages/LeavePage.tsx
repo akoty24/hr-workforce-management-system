@@ -17,7 +17,11 @@ type Decision = { request: LeaveRequest; action: 'approve' | 'reject' }
 
 export function LeavePage({ user }: { user: User }) {
   const isAdmin = user.role === 'admin'
-  const [status, setStatus] = useState<LeaveStatus | ''>(isAdmin ? 'pending' : '')
+  const isLeader = user.role === 'team_leader'
+  // Admins and team leaders decide requests of others (never their own).
+  const canDecide = (r: LeaveRequest) => (isAdmin || isLeader) && r.employee.id !== user.employee?.id
+  const isOwn = (r: LeaveRequest) => r.employee.id === user.employee?.id
+  const [status, setStatus] = useState<LeaveStatus | ''>(isAdmin || isLeader ? 'pending' : '')
   const [requests, setRequests] = useState<LeaveRequest[] | null>(null)
   const [balances, setBalances] = useState<LeaveBalance[]>([])
   const [error, setError] = useState<string | null>(null)
@@ -68,7 +72,13 @@ export function LeavePage({ user }: { user: User }) {
     <section>
       <PageHead
         title="Leave"
-        subtitle={isAdmin ? 'Review and decide leave requests.' : 'Your leave balance and requests.'}
+        subtitle={
+          isAdmin
+            ? 'Review and decide leave requests.'
+            : isLeader
+              ? 'Your requests and those of your team. Your decision on your team’s requests is final.'
+              : 'Your leave balance and requests.'
+        }
         actions={canRequest && <button onClick={() => setCreating(true)}>+ Request leave</button>}
       />
 
@@ -106,7 +116,7 @@ export function LeavePage({ user }: { user: User }) {
           <table>
             <thead>
               <tr>
-                {isAdmin && <th>Employee</th>}
+                {(isAdmin || isLeader) && <th>Employee</th>}
                 <th>Type</th>
                 <th>Dates</th>
                 <th className="num">Days</th>
@@ -117,9 +127,11 @@ export function LeavePage({ user }: { user: User }) {
             <tbody>
               {requests.map((r) => (
                 <tr key={r.id}>
-                  {isAdmin && (
+                  {(isAdmin || isLeader) && (
                     <td>
-                      <div className="strong">{r.employee.full_name}</div>
+                      <div className="strong">
+                        {r.employee.full_name} {isOwn(r) && <span className="muted small">(you)</span>}
+                      </div>
                       <div className="muted small">{r.employee.employee_code}</div>
                     </td>
                   )}
@@ -139,7 +151,7 @@ export function LeavePage({ user }: { user: User }) {
                     )}
                   </td>
                   <td className="actions">
-                    {r.status === 'pending' && isAdmin && (
+                    {r.status === 'pending' && canDecide(r) && (
                       <>
                         <button className="link" onClick={() => setDeciding({ request: r, action: 'approve' })}>
                           Approve
@@ -149,7 +161,7 @@ export function LeavePage({ user }: { user: User }) {
                         </button>
                       </>
                     )}
-                    {r.status === 'pending' && (!isAdmin || r.employee.id === user.employee?.id) && (
+                    {r.status === 'pending' && isOwn(r) && (
                       <button className="link danger" onClick={() => cancel(r)}>
                         Cancel
                       </button>

@@ -32,7 +32,7 @@ cd backend  && php artisan serve    # http://127.0.0.1:8000
 cd frontend && npm run dev          # http://localhost:5173  ← open this
 ```
 
-Demo accounts (local only): `admin@demo.test` / `employee@demo.test`, password `DemoPassword123`.
+Demo accounts (local only), password `DemoPassword123`: `admin@demo.test` (admin), `leader@demo.test` (team leader of Mona and Karim), `employee@demo.test` (Mona).
 
 Production-like: `npm run build` in `frontend/` writes the SPA into `backend/public/app/`; then http://127.0.0.1:8000 serves everything from Laravel.
 

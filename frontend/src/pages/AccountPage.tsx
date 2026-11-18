@@ -1,6 +1,6 @@
 import { useState, type FormEvent } from 'react'
 import { ApiError, api, errorMessage } from '../api'
-import type { User } from '../types'
+import { ROLE_LABELS, type User } from '../types'
 import { ErrorText, FieldError, PageHead } from '../components/ui'
 
 export function AccountPage({ user }: { user: User }) {
@@ -45,7 +45,7 @@ export function AccountPage({ user }: { user: User }) {
             <dd>{user.email}</dd>
             <dt>Role</dt>
             <dd>
-              <span className={`role role-${user.role}`}>{user.role}</span>
+              <span className={`role role-${user.role}`}>{ROLE_LABELS[user.role]}</span>
             </dd>
             <dt>Employee record</dt>
             <dd>{user.employee?.full_name ?? '—'}</dd>

@@ -50,7 +50,13 @@ export function DashboardPage({ user }: { user: User }) {
         title={greeting}
         subtitle={
           dashboard.employee
-            ? [dashboard.employee.job_title, dashboard.employee.department].filter(Boolean).join(' · ')
+            ? [
+                dashboard.employee.job_title,
+                dashboard.employee.department,
+                dashboard.employee.manager && `Reports to ${dashboard.employee.manager}`,
+              ]
+                .filter(Boolean)
+                .join(' · ')
             : undefined
         }
         actions={<Link to="/leave" className="button">Request leave</Link>}
@@ -58,6 +64,28 @@ export function DashboardPage({ user }: { user: User }) {
       {!dashboard.employee && (
         <div className="card notice">Your account is not linked to an employee record yet. Ask an administrator.</div>
       )}
+
+      {dashboard.team && (
+        <>
+          <h2 className="section-title">My team</h2>
+          <div className="stats">
+            <Stat label="Team members" value={dashboard.team.size} to="/employees" />
+            <Stat
+              label="Waiting for your decision"
+              value={dashboard.team.pending_requests.length}
+              highlight={dashboard.team.pending_requests.length > 0}
+              to="/leave"
+            />
+            <Stat label="On leave today" value={dashboard.team.on_leave_today.length} to="/leave" />
+          </div>
+          <div className="grid-2 section">
+            <RequestList title="Team requests to decide" requests={dashboard.team.pending_requests} empty="Nothing waiting for you." />
+            <RequestList title="Team on leave today" requests={dashboard.team.on_leave_today} empty="Your whole team is in today." />
+          </div>
+          <h2 className="section-title">My leave</h2>
+        </>
+      )}
+
       {dashboard.balances.length > 0 && <Balances balances={dashboard.balances} />}
       <RequestList title="My recent requests" requests={dashboard.recent_requests} empty="You have not requested leave yet." />
     </>

@@ -110,7 +110,7 @@ export const api = {
   },
 
   employees: {
-    list: (params: { search?: string; department_id?: string; status?: string; page?: number }) =>
+    list: (params: { search?: string; department_id?: string; status?: string; page?: number; per_page?: number }) =>
       request<Paginated<Employee>>('GET', `/employees${query(params)}`),
     create: (input: EmployeeInput) => data(request<{ data: Employee }>('POST', '/employees', input)),
     update: (id: string, input: EmployeeInput) => data(request<{ data: Employee }>('PUT', `/employees/${id}`, input)),
@@ -131,7 +131,7 @@ export const api = {
   },
 
   leaveRequests: {
-    list: (params: { status?: LeaveStatus | ''; employee_id?: string }) =>
+    list: (params: { status?: LeaveStatus | ''; employee_id?: string; scope?: 'mine' | 'team' }) =>
       data(request<{ data: LeaveRequest[] }>('GET', `/leave-requests${query(params)}`)),
     create: (input: LeaveRequestInput) => data(request<{ data: LeaveRequest }>('POST', '/leave-requests', input)),
     approve: (id: string, note?: string) => data(request<{ data: LeaveRequest }>('POST', `/leave-requests/${id}/approve`, { note })),

@@ -6,19 +6,25 @@ use App\Models\LeaveRequest;
 use App\Models\User;
 
 /**
- * Admins see and decide all requests; other users see and cancel only the
- * requests of the employee record linked to their own account.
+ * - Admins see and decide all requests.
+ * - Team leaders see and decide their direct reports' requests (final
+ *   decision), but never their own.
+ * - Everyone sees and cancels their own requests.
  */
 class LeaveRequestPolicy
 {
     public function view(User $user, LeaveRequest $request): bool
     {
-        return $user->isAdmin() || $this->owns($user, $request);
+        return $user->isAdmin() || $this->owns($user, $request) || $user->leads($request->employee);
     }
 
     public function decide(User $user, LeaveRequest $request): bool
     {
-        return $user->isAdmin();
+        if ($this->owns($user, $request)) {
+            return false; // nobody approves their own leave
+        }
+
+        return $user->isAdmin() || $user->leads($request->employee);
     }
 
     public function cancel(User $user, LeaveRequest $request): bool
@@ -28,6 +34,6 @@ class LeaveRequestPolicy
 
     private function owns(User $user, LeaveRequest $request): bool
     {
-        return $request->employee()->where('user_id', $user->id)->exists();
+        return $request->employee->user_id === $user->id;
     }
 }

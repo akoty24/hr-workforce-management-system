@@ -3,7 +3,13 @@ export interface Tenant {
   slug: string
 }
 
-export type UserRole = 'admin' | 'employee'
+export type UserRole = 'admin' | 'team_leader' | 'employee'
+
+export const ROLE_LABELS: Record<UserRole, string> = {
+  admin: 'Admin',
+  team_leader: 'Team leader',
+  employee: 'Employee',
+}
 
 export interface User {
   id: string
@@ -51,6 +57,7 @@ export interface Employee {
   hire_date: string | null
   status: EmployeeStatus
   department: { id: string; name: string } | null
+  manager: { id: string; full_name: string } | null
   user: { id: string; email: string } | null
 }
 
@@ -64,6 +71,7 @@ export interface EmployeeInput {
   hire_date: string
   status: EmployeeStatus
   department_id: string
+  manager_id: string
   user_id: string
 }
 
@@ -132,8 +140,15 @@ export type Dashboard =
       on_leave_today: LeaveRequest[]
     }
   | {
-      role: 'employee'
-      employee: { id: string; full_name: string; job_title: string | null; department: string | null } | null
+      role: 'employee' | 'team_leader'
+      employee: {
+        id: string
+        full_name: string
+        job_title: string | null
+        department: string | null
+        manager: string | null
+      } | null
       balances: LeaveBalance[]
       recent_requests: LeaveRequest[]
+      team?: { size: number; pending_requests: LeaveRequest[]; on_leave_today: LeaveRequest[] }
     }

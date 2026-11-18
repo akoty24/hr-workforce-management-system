@@ -815,3 +815,29 @@ button.tab.active {
     grid-template-columns: 1fr;
   }
 }
+
+/* ---------- team leader ---------- */
+
+.role-team_leader {
+  background: #f4f3ff;
+  color: #5925dc;
+}
+
+@media (prefers-color-scheme: dark) {
+  .role-team_leader {
+    background: #221a3d;
+    color: #a48afb;
+  }
+}
+
+.section-title {
+  font-size: 1rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--muted);
+  margin: 8px 0 12px;
+}
+
+.section {
+  margin-bottom: 28px;
+}

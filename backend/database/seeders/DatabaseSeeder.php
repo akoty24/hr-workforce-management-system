@@ -28,6 +28,8 @@ class DatabaseSeeder extends Seeder
 
     public const DEMO_EMPLOYEE_EMAIL = 'employee@demo.test';
 
+    public const DEMO_LEADER_EMAIL = 'leader@demo.test';
+
     public const DEMO_PASSWORD = 'DemoPassword123';
 
     public function run(InstallTenant $install, TenantContext $context, LeaveService $leave): void
@@ -48,6 +50,13 @@ class DatabaseSeeder extends Seeder
                 'role' => UserRole::Employee,
             ]);
 
+            $leaderUser = User::create([
+                'name' => 'Ahmed Ali',
+                'email' => self::DEMO_LEADER_EMAIL,
+                'password' => self::DEMO_PASSWORD,
+                'role' => UserRole::TeamLeader,
+            ]);
+
             $departments = [];
             foreach ([
                 ['Human Resources', 'Recruitment, onboarding and employee relations.'],
@@ -60,7 +69,7 @@ class DatabaseSeeder extends Seeder
 
             $people = [
                 ['EMP-001', 'Mona', 'Hassan', 'Engineering', 'Software Engineer', '2022-03-01', EmployeeStatus::Active, $employeeUser->id],
-                ['EMP-002', 'Ahmed', 'Ali', 'Engineering', 'Engineering Manager', '2019-07-15', EmployeeStatus::Active, null],
+                ['EMP-002', 'Ahmed', 'Ali', 'Engineering', 'Engineering Manager', '2019-07-15', EmployeeStatus::Active, $leaderUser->id],
                 ['EMP-003', 'Sara', 'Mahmoud', 'Human Resources', 'HR Specialist', '2021-01-10', EmployeeStatus::Active, null],
                 ['EMP-004', 'Omar', 'Khaled', 'Finance', 'Accountant', '2020-09-20', EmployeeStatus::Active, null],
                 ['EMP-005', 'Nour', 'Ibrahim', 'Sales', 'Account Executive', '2023-05-02', EmployeeStatus::Active, null],
@@ -85,6 +94,11 @@ class DatabaseSeeder extends Seeder
                 ]);
             }
 
+            // Reporting lines: Ahmed (team leader) manages Mona and Karim; Youssef manages Nour.
+            foreach (['EMP-001' => 'EMP-002', 'EMP-008' => 'EMP-002', 'EMP-005' => 'EMP-006'] as $code => $managerCode) {
+                $employees[$code]->update(['manager_id' => $employees[$managerCode]->id]);
+            }
+
             $annual = LeaveType::create(['name' => 'Annual Leave', 'days_per_year' => 21]);
             $sick = LeaveType::create(['name' => 'Sick Leave', 'days_per_year' => 15]);
             LeaveType::create(['name' => 'Unpaid Leave', 'days_per_year' => null]);
@@ -103,6 +117,6 @@ class DatabaseSeeder extends Seeder
             $leave->decide($rejected, $admin, LeaveStatus::Rejected, 'End-of-quarter sales push; please pick another week.');
         });
 
-        $this->command?->info('Demo tenant "demo" — admin: '.self::DEMO_ADMIN_EMAIL.' / employee: '.self::DEMO_EMPLOYEE_EMAIL.' — password: '.self::DEMO_PASSWORD);
+        $this->command?->info('Demo tenant "demo" — admin: '.self::DEMO_ADMIN_EMAIL.' / team leader: '.self::DEMO_LEADER_EMAIL.' / employee: '.self::DEMO_EMPLOYEE_EMAIL.' — password: '.self::DEMO_PASSWORD);
     }
 }

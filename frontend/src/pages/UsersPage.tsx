@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState, type FormEvent } from 'react'
 import { ApiError, api, errorMessage } from '../api'
-import type { User, UserInput, UserRole } from '../types'
+import { ROLE_LABELS, type User, type UserInput, type UserRole } from '../types'
 import { ErrorText, FieldError, Modal, PageHead } from '../components/ui'
 import { formatDate } from '../format'
 
@@ -61,7 +61,7 @@ export function UsersPage({ currentUser }: { currentUser: User }) {
                     <div className="muted small">{u.email}</div>
                   </td>
                   <td>
-                    <span className={`role role-${u.role}`}>{u.role}</span>
+                    <span className={`role role-${u.role}`}>{ROLE_LABELS[u.role]}</span>
                   </td>
                   <td>{u.employee?.full_name ?? <span className="muted">—</span>}</td>
                   <td>{u.is_active ? <span className="badge badge-active">Active</span> : <span className="badge badge-cancelled">Disabled</span>}</td>
@@ -138,6 +138,7 @@ function UserForm({ user, isSelf, onClose, onSaved }: { user: User | null; isSel
           Role
           <select value={form.role} disabled={isSelf} onChange={(e) => setForm({ ...form, role: e.target.value as UserRole })}>
             <option value="employee">Employee — sees own data, requests leave</option>
+            <option value="team_leader">Team leader — also approves leave of their direct reports</option>
             <option value="admin">Admin — manages the company</option>
           </select>
           <FieldError message={errors?.field('role')} />

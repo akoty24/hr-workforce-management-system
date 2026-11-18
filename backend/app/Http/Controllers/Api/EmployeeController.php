@@ -6,6 +6,7 @@ use App\Http\Requests\EmployeeRequest;
 use App\Http\Resources\EmployeeResource;
 use App\Models\Employee;
 use App\Models\EmployeeStatus;
+use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
@@ -15,6 +16,8 @@ use Illuminate\Validation\Rule;
 
 class EmployeeController
 {
+    private const RELATIONS = ['department', 'user', 'manager'];
+
     public function index(Request $request): AnonymousResourceCollection
     {
         Gate::authorize('viewAny', Employee::class);
@@ -26,9 +29,14 @@ class EmployeeController
             'per_page' => ['nullable', 'integer', 'min:1', 'max:200'],
         ]);
 
+        /** @var User $user */
+        $user = $request->user();
+
         return EmployeeResource::collection(
             Employee::query()
-                ->with(['department', 'user'])
+                ->with(self::RELATIONS)
+                // Team leaders only see their direct reports.
+                ->unless($user->isAdmin(), fn ($q) => $q->where('manager_id', $user->employee?->id ?? '-'))
                 ->search($filters['search'] ?? null)
                 ->when($filters['department_id'] ?? null, fn ($q, $id) => $q->where('department_id', $id))
                 ->when($filters['status'] ?? null, fn ($q, $status) => $q->where('status', $status))
@@ -43,26 +51,32 @@ class EmployeeController
     {
         $employee = Employee::create($request->validated());
 
-        return new EmployeeResource($employee->load(['department', 'user']));
+        return new EmployeeResource($employee->load(self::RELATIONS));
     }
 
     public function show(Employee $employee): EmployeeResource
     {
         Gate::authorize('view', $employee);
 
-        return new EmployeeResource($employee->load(['department', 'user']));
+        return new EmployeeResource($employee->load(self::RELATIONS));
     }
 
     public function update(EmployeeRequest $request, Employee $employee): EmployeeResource
     {
         $employee->update($request->validated());
 
-        return new EmployeeResource($employee->load(['department', 'user']));
+        return new EmployeeResource($employee->load(self::RELATIONS));
     }
 
     public function destroy(Employee $employee): Response|JsonResponse
     {
         Gate::authorize('delete', $employee);
+
+        if ($employee->reports()->exists()) {
+            return response()->json([
+                'message' => 'Other employees report to this person. Assign them a different manager first.',
+            ], 409);
+        }
 
         if ($employee->leaveRequests()->exists()) {
             return response()->json([

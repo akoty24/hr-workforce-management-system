@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { ApiError, api, setUnauthenticatedHandler } from './api'
-import type { Tenant, User } from './types'
+import { ROLE_LABELS, type Tenant, type User, type UserRole } from './types'
 import { Link } from './router'
 import { navigate, usePath } from './navigation'
 import { LoginPage } from './components/LoginPage'
@@ -23,16 +23,17 @@ interface NavItem {
   path: string
   label: string
   icon: string
-  adminOnly?: boolean
+  /** Roles that see this item; all roles when omitted. */
+  roles?: UserRole[]
 }
 
 const NAV: NavItem[] = [
   { path: '/', label: 'Dashboard', icon: '▦' },
-  { path: '/employees', label: 'Employees', icon: '👥', adminOnly: true },
+  { path: '/employees', label: 'Employees', icon: '👥', roles: ['admin', 'team_leader'] },
   { path: '/departments', label: 'Departments', icon: '🏢' },
   { path: '/leave', label: 'Leave', icon: '🗓' },
-  { path: '/leave-types', label: 'Leave types', icon: '⚙', adminOnly: true },
-  { path: '/users', label: 'Users', icon: '🔑', adminOnly: true },
+  { path: '/leave-types', label: 'Leave types', icon: '⚙', roles: ['admin'] },
+  { path: '/users', label: 'Users', icon: '🔑', roles: ['admin'] },
   { path: '/account', label: 'My account', icon: '👤' },
 ]
 
@@ -124,14 +125,15 @@ export default function App() {
     return <LoginPage tenant={tenant} onLogin={setUser} />
   }
 
-  const isAdmin = user.role === 'admin'
-  const items = NAV.filter((item) => !item.adminOnly || isAdmin)
+  const items = NAV.filter((item) => !item.roles || item.roles.includes(user.role)).map((item) =>
+    item.path === '/employees' && user.role === 'team_leader' ? { ...item, label: 'My team' } : item,
+  )
   const current = items.find((item) => item.path === path) ? path : '/'
 
   let page
   switch (current) {
     case '/employees':
-      page = <EmployeesPage />
+      page = <EmployeesPage user={user} />
       break
     case '/departments':
       page = <DepartmentsPage user={user} />
@@ -188,7 +190,7 @@ export default function App() {
             <div className="user-meta">
               <div>{user.name}</div>
               <div className="muted small">
-                {user.email} · <span className={`role role-${user.role}`}>{user.role}</span>
+                {user.email} · <span className={`role role-${user.role}`}>{ROLE_LABELS[user.role]}</span>
               </div>
             </div>
             <button className="secondary" onClick={logout}>

@@ -68,6 +68,21 @@ class User extends Authenticatable
         return $this->role === UserRole::Admin;
     }
 
+    public function isTeamLeader(): bool
+    {
+        return $this->role === UserRole::TeamLeader;
+    }
+
+    /**
+     * Whether this user is the team leader (direct manager) of $employee.
+     */
+    public function leads(Employee $employee): bool
+    {
+        return $this->isTeamLeader()
+            && $this->employee !== null
+            && $employee->manager_id === $this->employee->id;
+    }
+
     /**
      * The employee record linked to this sign-in account, if any.
      *

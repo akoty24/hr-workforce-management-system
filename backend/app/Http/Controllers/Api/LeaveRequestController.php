@@ -29,17 +29,30 @@ class LeaveRequestController
         $filters = $request->validate([
             'status' => ['nullable', Rule::enum(LeaveStatus::class)],
             'employee_id' => ['nullable', 'uuid'],
+            // mine = own requests; team = direct reports' requests (team leaders, admins)
+            'scope' => ['nullable', Rule::in(['mine', 'team'])],
         ]);
 
         /** @var User $user */
         $user = $request->user();
+        $ownEmployeeId = $user->employee?->id;
+        $scope = $filters['scope'] ?? null;
 
         $query = LeaveRequest::query()->with(self::RELATIONS);
 
-        if (! $user->isAdmin()) {
-            // Non-admins only ever see their own requests.
+        if ($scope === 'mine' || (! $user->isAdmin() && ! $user->isTeamLeader())) {
+            // Employees only ever see their own requests.
             $query->whereHas('employee', fn ($q) => $q->where('user_id', $user->id));
-        } elseif ($filters['employee_id'] ?? null) {
+        } elseif ($scope === 'team' || $user->isTeamLeader()) {
+            $teamOnly = $scope === 'team';
+            // Team leaders: their direct reports (and their own, unless scope=team).
+            // Grouped: an ungrouped orWhere would escape the whereHas join condition.
+            $query->whereHas('employee', fn ($q) => $q->where(fn ($w) => $w
+                ->where('manager_id', $ownEmployeeId ?? '-')
+                ->unless($teamOnly, fn ($w) => $w->orWhere('user_id', $user->id))));
+        }
+
+        if ($filters['employee_id'] ?? null) {
             $query->where('employee_id', $filters['employee_id']);
         }
 

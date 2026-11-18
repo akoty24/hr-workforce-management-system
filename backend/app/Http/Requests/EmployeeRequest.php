@@ -7,6 +7,7 @@ use App\Models\EmployeeStatus;
 use App\Tenancy\Validation\TenantRule;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\Validator;
 
 class EmployeeRequest extends FormRequest
 {
@@ -32,7 +33,7 @@ class EmployeeRequest extends FormRequest
             $clean['email'] = strtolower($clean['email']);
         }
 
-        foreach (['department_id', 'user_id', 'hire_date'] as $field) {
+        foreach (['department_id', 'user_id', 'manager_id', 'hire_date'] as $field) {
             if ($this->input($field) === '') {
                 $clean[$field] = null;
             }
@@ -62,6 +63,37 @@ class EmployeeRequest extends FormRequest
                 'nullable', 'uuid', TenantRule::exists('users'),
                 TenantRule::unique('employees', 'user_id')->ignore($id),
             ],
+            'manager_id' => ['nullable', 'uuid', TenantRule::exists('employees')],
+        ];
+    }
+
+    /**
+     * Reporting lines must form a tree: no self-management, no cycles.
+     */
+    public function after(): array
+    {
+        return [
+            function (Validator $validator) {
+                $id = $this->employee()?->id;
+                $managerId = $this->input('manager_id');
+
+                if (! $id || ! $managerId || $validator->errors()->has('manager_id')) {
+                    return;
+                }
+
+                // Walk up from the proposed manager; reaching this employee means a cycle.
+                $seen = [];
+                for ($current = $managerId; $current !== null && ! isset($seen[$current]); $current = Employee::query()->whereKey($current)->value('manager_id')) {
+                    if ($current === $id) {
+                        $validator->errors()->add('manager_id', $managerId === $id
+                            ? 'An employee cannot report to themselves.'
+                            : 'This would create a circular reporting line.');
+
+                        return;
+                    }
+                    $seen[$current] = true;
+                }
+            },
         ];
     }
 
@@ -76,6 +108,7 @@ class EmployeeRequest extends FormRequest
             'user_id.unique' => 'This user account is already linked to another employee.',
             'department_id.exists' => 'The selected department does not exist.',
             'user_id.exists' => 'The selected user does not exist.',
+            'manager_id.exists' => 'The selected manager does not exist.',
         ];
     }
 

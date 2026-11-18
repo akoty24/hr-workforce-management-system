@@ -25,7 +25,7 @@ class Employee extends Model
     use BelongsToTenant, HasUuids;
 
     protected $fillable = [
-        'department_id', 'user_id', 'employee_code', 'first_name', 'last_name',
+        'department_id', 'user_id', 'manager_id', 'employee_code', 'first_name', 'last_name',
         'email', 'phone', 'job_title', 'hire_date', 'status',
     ];
 
@@ -60,6 +60,26 @@ class Employee extends Model
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
+    }
+
+    /**
+     * Direct manager ("reports to").
+     *
+     * @return BelongsTo<Employee, $this>
+     */
+    public function manager(): BelongsTo
+    {
+        return $this->belongsTo(Employee::class, 'manager_id');
+    }
+
+    /**
+     * Direct reports.
+     *
+     * @return HasMany<Employee, $this>
+     */
+    public function reports(): HasMany
+    {
+        return $this->hasMany(Employee::class, 'manager_id');
     }
 
     /**
