@@ -156,6 +156,22 @@ export interface LeaveBalance {
   remaining: number | null
 }
 
+export interface Holiday {
+  id: string
+  name: string
+  start_date: string
+  end_date: string
+  days: number
+}
+
+export interface HolidayInput {
+  name: string
+  start_date: string
+  end_date: string
+}
+
+export type UpcomingHoliday = Pick<Holiday, 'name' | 'start_date' | 'end_date'>
+
 export interface Paginated<T> {
   data: T[]
   meta: { current_page: number; last_page: number; total: number; per_page: number }
@@ -169,10 +185,12 @@ export type Dashboard =
         employees_active: number
         departments: number
         pending_requests: number
+        pending_permissions: number
         on_leave_today: number
       }
       pending_requests: LeaveRequest[]
       on_leave_today: LeaveRequest[]
+      upcoming_holidays: UpcomingHoliday[]
     }
   | {
       role: 'employee' | 'team_leader'
@@ -185,5 +203,6 @@ export type Dashboard =
       } | null
       balances: LeaveBalance[]
       recent_requests: LeaveRequest[]
-      team?: { size: number; pending_requests: LeaveRequest[]; on_leave_today: LeaveRequest[] }
+      team?: { size: number; pending_requests: LeaveRequest[]; on_leave_today: LeaveRequest[]; pending_permissions: number }
+      upcoming_holidays: UpcomingHoliday[]
     }

@@ -7,8 +7,10 @@ use App\Leave\LeaveService;
 use App\Models\Department;
 use App\Models\Employee;
 use App\Models\EmployeeStatus;
+use App\Models\Holiday;
 use App\Models\LeaveRequest;
 use App\Models\LeaveStatus;
+use App\Models\ShortLeave;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
@@ -35,10 +37,12 @@ class DashboardController
                     'employees_active' => Employee::query()->where('status', EmployeeStatus::Active)->count(),
                     'departments' => Department::query()->count(),
                     'pending_requests' => LeaveRequest::query()->where('status', LeaveStatus::Pending)->count(),
+                    'pending_permissions' => ShortLeave::query()->where('status', LeaveStatus::Pending)->count(),
                     'on_leave_today' => $onLeaveToday->count(),
                 ],
                 'pending_requests' => LeaveRequestResource::collection($pending),
                 'on_leave_today' => LeaveRequestResource::collection($onLeaveToday),
+                'upcoming_holidays' => $this->upcomingHolidays(),
             ]]);
         }
 
@@ -66,10 +70,35 @@ class DashboardController
                 'size' => $employee->reports()->count(),
                 'pending_requests' => LeaveRequestResource::collection($this->pending($team())->get()),
                 'on_leave_today' => LeaveRequestResource::collection($this->onLeaveToday($team())->get()),
+                'pending_permissions' => ShortLeave::query()
+                    ->where('status', LeaveStatus::Pending)
+                    ->whereHas('employee', fn ($q) => $q->where('manager_id', $employee->id))
+                    ->count(),
             ];
         }
 
+        $data['upcoming_holidays'] = $this->upcomingHolidays();
+
         return response()->json(['data' => $data]);
+    }
+
+    /**
+     * @return list<array{name: string, start_date: string, end_date: string}>
+     */
+    private function upcomingHolidays(): array
+    {
+        return Holiday::query()
+            ->whereDate('end_date', '>=', now()->toDateString())
+            ->orderBy('start_date')
+            ->limit(3)
+            ->get()
+            ->map(fn (Holiday $h) => [
+                'name' => $h->name,
+                'start_date' => $h->start_date->toDateString(),
+                'end_date' => $h->end_date->toDateString(),
+            ])
+            ->values()
+            ->all();
     }
 
     /**

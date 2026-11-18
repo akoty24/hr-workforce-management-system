@@ -3,6 +3,7 @@
 namespace App\Leave;
 
 use App\Models\Employee;
+use App\Models\Holiday;
 use App\Models\LeaveRequest;
 use App\Models\LeaveStatus;
 use App\Models\LeaveType;
@@ -21,10 +22,11 @@ final class LeaveService
     public function workingDays(CarbonImmutable $start, CarbonImmutable $end): int
     {
         $weekend = config('hr.weekend_days', []);
+        $holidays = Holiday::datesBetween($start, $end);
         $days = 0;
 
         foreach (CarbonPeriod::create($start, $end) as $day) {
-            if (! in_array($day->dayOfWeekIso, $weekend, true)) {
+            if (! in_array($day->dayOfWeekIso, $weekend, true) && ! isset($holidays[$day->toDateString()])) {
                 $days++;
             }
         }
@@ -124,7 +126,7 @@ final class LeaveService
             $days = $this->workingDays($start, $end);
 
             if ($days === 0) {
-                throw ValidationException::withMessages(['end_date' => 'The selected period contains no working days.']);
+                throw ValidationException::withMessages(['end_date' => 'The selected period contains no working days (only weekends or public holidays).']);
             }
 
             $overlaps = LeaveRequest::query()

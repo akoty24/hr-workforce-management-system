@@ -6,6 +6,7 @@ use App\Leave\LeaveService;
 use App\Models\Department;
 use App\Models\Employee;
 use App\Models\EmployeeStatus;
+use App\Models\Holiday;
 use App\Models\LeaveStatus;
 use App\Models\LeaveType;
 use App\Models\User;
@@ -65,6 +66,11 @@ class DatabaseSeeder extends Seeder
                 'password' => self::DEMO_PASSWORD,
                 'role' => UserRole::Hr,
             ]);
+
+            // Public holidays (dates relative to today so they show as upcoming).
+            $base = now()->startOfDay();
+            Holiday::create(['name' => 'National Day', 'start_date' => $base->copy()->addDays(20)->toDateString(), 'end_date' => $base->copy()->addDays(20)->toDateString()]);
+            Holiday::create(['name' => 'New Year Holiday', 'start_date' => $base->copy()->addYear()->startOfYear()->toDateString(), 'end_date' => $base->copy()->addYear()->startOfYear()->toDateString()]);
 
             $departments = [];
             foreach ([
@@ -128,6 +134,6 @@ class DatabaseSeeder extends Seeder
             $leave->decide($rejected, $admin, LeaveStatus::Rejected, 'End-of-quarter sales push; please pick another week.');
         });
 
-        $this->command?->info('Demo tenant "demo" — admin: '.self::DEMO_ADMIN_EMAIL.' / team leader: '.self::DEMO_LEADER_EMAIL.' / employee: '.self::DEMO_EMPLOYEE_EMAIL.' — password: '.self::DEMO_PASSWORD);
+        $this->command?->info('Demo tenant "demo" — admin: '.self::DEMO_ADMIN_EMAIL.' / HR: '.self::DEMO_HR_EMAIL.' / team leader: '.self::DEMO_LEADER_EMAIL.' / employee: '.self::DEMO_EMPLOYEE_EMAIL.' — password: '.self::DEMO_PASSWORD);
     }
 }

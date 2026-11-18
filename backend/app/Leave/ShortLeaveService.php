@@ -3,6 +3,7 @@
 namespace App\Leave;
 
 use App\Models\Employee;
+use App\Models\Holiday;
 use App\Models\LeaveRequest;
 use App\Models\LeaveStatus;
 use App\Models\ShortLeave;
@@ -41,6 +42,10 @@ final class ShortLeaveService
 
         if (in_array($date->dayOfWeekIso, config('hr.weekend_days', []), true)) {
             throw ValidationException::withMessages(['date' => 'The selected date is a weekend day.']);
+        }
+
+        if (Holiday::datesBetween($date, $date) !== []) {
+            throw ValidationException::withMessages(['date' => 'The selected date is a public holiday.']);
         }
 
         if ($employee->hire_date !== null && $date->lt($employee->hire_date)) {

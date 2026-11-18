@@ -63,12 +63,15 @@ class LeaveTest extends TestCase
     public function test_working_days_exclude_the_configured_weekend(): void
     {
         $service = app(LeaveService::class);
+        $count = fn () => $this->asTenant($this->acme, fn () => $service->workingDays(
+            CarbonImmutable::parse('2026-12-02'), CarbonImmutable::parse('2026-12-08'),
+        ));
 
         // Wed 2 .. Tue 8 Dec: Fri 4 + Sat 5 excluded => 5 working days.
-        $this->assertSame(5, $service->workingDays(CarbonImmutable::parse('2026-12-02'), CarbonImmutable::parse('2026-12-08')));
+        $this->assertSame(5, $count());
 
         config(['hr.weekend_days' => [6, 7]]);
-        $this->assertSame(5, $service->workingDays(CarbonImmutable::parse('2026-12-02'), CarbonImmutable::parse('2026-12-08')));
+        $this->assertSame(5, $count());
     }
 
     public function test_employee_submits_and_admin_approves(): void

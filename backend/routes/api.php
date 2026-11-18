@@ -5,6 +5,7 @@ use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\DashboardController;
 use App\Http\Controllers\Api\DepartmentController;
 use App\Http\Controllers\Api\EmployeeController;
+use App\Http\Controllers\Api\HolidayController;
 use App\Http\Controllers\Api\LeaveBalanceController;
 use App\Http\Controllers\Api\LeaveRequestController;
 use App\Http\Controllers\Api\LeaveTypeController;
@@ -35,6 +36,7 @@ Route::middleware('tenant.auth')->group(function () {
     Route::apiResource('employees', EmployeeController::class);
     Route::apiResource('users', UserController::class)->only(['index', 'store', 'update']);
 
+    Route::apiResource('holidays', HolidayController::class)->except(['show']);
     Route::apiResource('leave-types', LeaveTypeController::class)->except(['show']);
     Route::get('/leave-balances', LeaveBalanceController::class)->name('leave-balances');
     Route::apiResource('leave-requests', LeaveRequestController::class)->only(['index', 'store', 'show']);

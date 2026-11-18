@@ -9,6 +9,7 @@ import { DashboardPage } from './pages/DashboardPage'
 import { EmployeesPage } from './pages/EmployeesPage'
 import { DepartmentsPage } from './pages/DepartmentsPage'
 import { ShortLeavePage } from './pages/ShortLeavePage'
+import { HolidaysPage } from './pages/HolidaysPage'
 import { LeavePage } from './pages/LeavePage'
 import { LeaveTypesPage } from './pages/LeaveTypesPage'
 import { UsersPage } from './pages/UsersPage'
@@ -34,6 +35,7 @@ const NAV: NavItem[] = [
   { path: '/departments', label: 'Departments', icon: '🏢', roles: ['admin', 'hr'] },
   { path: '/leave', label: 'Leave', icon: '🗓' },
   { path: '/permissions', label: 'Permissions', icon: '⏱' },
+  { path: '/holidays', label: 'Holidays', icon: '🎉' },
   { path: '/leave-types', label: 'Leave types', icon: '⚙', roles: ['admin', 'hr'] },
   { path: '/users', label: 'Users', icon: '🔑', roles: ['admin'] },
   { path: '/account', label: 'My account', icon: '👤' },
@@ -142,6 +144,9 @@ export default function App() {
       break
     case '/leave':
       page = <LeavePage user={user} />
+      break
+    case '/holidays':
+      page = <HolidaysPage user={user} />
       break
     case '/permissions':
       page = <ShortLeavePage user={user} />

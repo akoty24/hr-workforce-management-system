@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { api, errorMessage } from '../api'
-import type { Dashboard, LeaveBalance, LeaveRequest, User } from '../types'
+import type { Dashboard, LeaveBalance, LeaveRequest, UpcomingHoliday, User } from '../types'
 import { Link } from '../router'
 import { ErrorText, PageHead, StatusBadge } from '../components/ui'
 import { dateRange } from '../format'
@@ -34,12 +34,14 @@ export function DashboardPage({ user }: { user: User }) {
           <Stat label="Active employees" value={s.employees_active} hint={`${s.employees_total} total`} to="/employees" />
           <Stat label="Departments" value={s.departments} to="/departments" />
           <Stat label="Pending leave requests" value={s.pending_requests} highlight={s.pending_requests > 0} to="/leave" />
+          <Stat label="Pending permissions" value={s.pending_permissions} highlight={s.pending_permissions > 0} to="/permissions" />
           <Stat label="On leave today" value={s.on_leave_today} to="/leave" />
         </div>
         <div className="grid-2">
           <RequestList title="Waiting for your decision" requests={dashboard.pending_requests} empty="No pending requests." />
           <RequestList title="On leave today" requests={dashboard.on_leave_today} empty="Everyone is in today." />
         </div>
+        <Holidays holidays={dashboard.upcoming_holidays} />
       </>
     )
   }
@@ -76,6 +78,12 @@ export function DashboardPage({ user }: { user: User }) {
               highlight={dashboard.team.pending_requests.length > 0}
               to="/leave"
             />
+            <Stat
+              label="Permissions to decide"
+              value={dashboard.team.pending_permissions}
+              highlight={dashboard.team.pending_permissions > 0}
+              to="/permissions"
+            />
             <Stat label="On leave today" value={dashboard.team.on_leave_today.length} to="/leave" />
           </div>
           <div className="grid-2 section">
@@ -88,7 +96,25 @@ export function DashboardPage({ user }: { user: User }) {
 
       {dashboard.balances.length > 0 && <Balances balances={dashboard.balances} />}
       <RequestList title="My recent requests" requests={dashboard.recent_requests} empty="You have not requested leave yet." />
+      <Holidays holidays={dashboard.upcoming_holidays} />
     </>
+  )
+}
+
+function Holidays({ holidays }: { holidays: UpcomingHoliday[] }) {
+  if (holidays.length === 0) return null
+  return (
+    <div className="card section">
+      <h2>Upcoming public holidays</h2>
+      <ul className="list">
+        {holidays.map((h) => (
+          <li key={`${h.name}-${h.start_date}`}>
+            <div className="strong">{h.name}</div>
+            <div className="muted small">{dateRange(h.start_date, h.end_date)}</div>
+          </li>
+        ))}
+      </ul>
+    </div>
   )
 }
 

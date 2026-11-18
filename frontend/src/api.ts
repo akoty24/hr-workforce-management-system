@@ -4,6 +4,8 @@ import type {
   DepartmentInput,
   Employee,
   EmployeeInput,
+  Holiday,
+  HolidayInput,
   LeaveBalance,
   LeaveRequest,
   LeaveRequestInput,
@@ -123,6 +125,13 @@ export const api = {
     list: () => data(request<{ data: User[] }>('GET', '/users')),
     create: (input: UserInput) => data(request<{ data: User }>('POST', '/users', input)),
     update: (id: string, input: UserInput) => data(request<{ data: User }>('PUT', `/users/${id}`, input)),
+  },
+
+  holidays: {
+    list: (year?: number) => data(request<{ data: Holiday[] }>('GET', `/holidays${query({ year })}`)),
+    create: (input: HolidayInput) => data(request<{ data: Holiday }>('POST', '/holidays', input)),
+    update: (id: string, input: HolidayInput) => data(request<{ data: Holiday }>('PUT', `/holidays/${id}`, input)),
+    remove: (id: string) => request<void>('DELETE', `/holidays/${id}`),
   },
 
   leaveTypes: {
