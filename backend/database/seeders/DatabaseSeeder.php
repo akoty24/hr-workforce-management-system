@@ -2,6 +2,7 @@
 
 namespace Database\Seeders;
 
+use App\Models\Department;
 use App\Models\User;
 use App\Models\UserRole;
 use App\Tenancy\Actions\InstallTenant;
@@ -40,6 +41,15 @@ class DatabaseSeeder extends Seeder
                 'password' => self::DEMO_PASSWORD,
                 'role' => UserRole::Employee,
             ]);
+
+            foreach ([
+                ['Human Resources', 'Recruitment, onboarding and employee relations.'],
+                ['Finance', 'Payroll, budgeting and accounting.'],
+                ['Engineering', 'Product development and IT.'],
+                ['Sales', null],
+            ] as [$name, $description]) {
+                Department::create(['name' => $name, 'description' => $description]);
+            }
         });
 
         $this->command?->info('Demo tenant "demo" — admin: '.self::DEMO_ADMIN_EMAIL.' / employee: '.self::DEMO_EMPLOYEE_EMAIL.' — password: '.self::DEMO_PASSWORD);
