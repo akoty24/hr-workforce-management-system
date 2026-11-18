@@ -1,9 +1,17 @@
 import { useEffect, useState } from 'react'
-import { ApiError, api } from './api'
+import { ApiError, api, setUnauthenticatedHandler } from './api'
 import type { Tenant, User } from './types'
+import { Link } from './router'
+import { navigate, usePath } from './navigation'
 import { LoginPage } from './components/LoginPage'
-import { DepartmentsPage } from './components/DepartmentsPage'
 import { HealthBadge } from './components/HealthBadge'
+import { DashboardPage } from './pages/DashboardPage'
+import { EmployeesPage } from './pages/EmployeesPage'
+import { DepartmentsPage } from './pages/DepartmentsPage'
+import { LeavePage } from './pages/LeavePage'
+import { LeaveTypesPage } from './pages/LeaveTypesPage'
+import { UsersPage } from './pages/UsersPage'
+import { AccountPage } from './pages/AccountPage'
 
 type Boot =
   | { state: 'loading' }
@@ -11,10 +19,35 @@ type Boot =
   | { state: 'error'; message: string }
   | { state: 'ready'; tenant: Tenant }
 
+interface NavItem {
+  path: string
+  label: string
+  icon: string
+  adminOnly?: boolean
+}
+
+const NAV: NavItem[] = [
+  { path: '/', label: 'Dashboard', icon: '▦' },
+  { path: '/employees', label: 'Employees', icon: '👥', adminOnly: true },
+  { path: '/departments', label: 'Departments', icon: '🏢' },
+  { path: '/leave', label: 'Leave', icon: '🗓' },
+  { path: '/leave-types', label: 'Leave types', icon: '⚙', adminOnly: true },
+  { path: '/users', label: 'Users', icon: '🔑', adminOnly: true },
+  { path: '/account', label: 'My account', icon: '👤' },
+]
+
 export default function App() {
   const [boot, setBoot] = useState<Boot>({ state: 'loading' })
   // undefined = still checking the session, null = signed out
   const [user, setUser] = useState<User | null | undefined>(undefined)
+  const [menuOpen, setMenuOpen] = useState(false)
+  const path = usePath()
+
+  // Any 401 from the API (expired session, deactivated account) signs out.
+  useEffect(() => {
+    setUnauthenticatedHandler(() => setUser(null))
+    return () => setUnauthenticatedHandler(null)
+  }, [])
 
   useEffect(() => {
     let cancelled = false
@@ -51,6 +84,7 @@ export default function App() {
       await api.logout()
     } finally {
       setUser(null)
+      navigate('/')
     }
   }
 
@@ -90,9 +124,37 @@ export default function App() {
     return <LoginPage tenant={tenant} onLogin={setUser} />
   }
 
+  const isAdmin = user.role === 'admin'
+  const items = NAV.filter((item) => !item.adminOnly || isAdmin)
+  const current = items.find((item) => item.path === path) ? path : '/'
+
+  let page
+  switch (current) {
+    case '/employees':
+      page = <EmployeesPage />
+      break
+    case '/departments':
+      page = <DepartmentsPage user={user} />
+      break
+    case '/leave':
+      page = <LeavePage user={user} />
+      break
+    case '/leave-types':
+      page = <LeaveTypesPage />
+      break
+    case '/users':
+      page = <UsersPage currentUser={user} />
+      break
+    case '/account':
+      page = <AccountPage user={user} />
+      break
+    default:
+      page = <DashboardPage user={user} />
+  }
+
   return (
-    <div className="layout">
-      <header className="topbar">
+    <div className="shell">
+      <aside className={`sidebar ${menuOpen ? 'open' : ''}`} onClick={() => setMenuOpen(false)}>
         <div className="brand">
           <span className="logo" aria-hidden>
             HR
@@ -102,26 +164,40 @@ export default function App() {
             <div className="muted small">HR Workforce</div>
           </div>
         </div>
-        <div className="user">
-          <div className="user-meta">
-            <div>{user.name}</div>
-            <div className="muted small">
-              {user.email} · <span className={`role role-${user.role}`}>{user.role}</span>
-            </div>
-          </div>
-          <button className="secondary" onClick={logout}>
-            Sign out
-          </button>
+        <nav>
+          {items.map((item) => (
+            <Link key={item.path} to={item.path} className={`nav-item ${current === item.path ? 'active' : ''}`}>
+              <span className="nav-icon" aria-hidden>
+                {item.icon}
+              </span>
+              {item.label}
+            </Link>
+          ))}
+        </nav>
+        <div className="sidebar-foot small">
+          <HealthBadge />
         </div>
-      </header>
+      </aside>
 
-      <main className="content">
-        <DepartmentsPage user={user} onSessionExpired={() => setUser(null)} />
-      </main>
-
-      <footer className="footer muted small">
-        <HealthBadge />
-      </footer>
+      <div className="main">
+        <header className="topbar">
+          <button className="icon menu-button" onClick={() => setMenuOpen((open) => !open)} aria-label="Menu">
+            ☰
+          </button>
+          <div className="user">
+            <div className="user-meta">
+              <div>{user.name}</div>
+              <div className="muted small">
+                {user.email} · <span className={`role role-${user.role}`}>{user.role}</span>
+              </div>
+            </div>
+            <button className="secondary" onClick={logout}>
+              Sign out
+            </button>
+          </div>
+        </header>
+        <main className="content">{page}</main>
+      </div>
     </div>
   )
 }

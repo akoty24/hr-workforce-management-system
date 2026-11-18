@@ -1,4 +1,20 @@
-import type { Department, DepartmentInput, Tenant, User } from './types'
+import type {
+  Dashboard,
+  Department,
+  DepartmentInput,
+  Employee,
+  EmployeeInput,
+  LeaveBalance,
+  LeaveRequest,
+  LeaveRequestInput,
+  LeaveStatus,
+  LeaveType,
+  LeaveTypeInput,
+  Paginated,
+  Tenant,
+  User,
+  UserInput,
+} from './types'
 
 /** Error returned by the API, with Laravel validation errors when present. */
 export class ApiError extends Error {
@@ -17,9 +33,24 @@ export class ApiError extends Error {
   }
 }
 
+/** Notified when any request returns 401 (session ended/expired). */
+let onUnauthenticated: (() => void) | null = null
+export function setUnauthenticatedHandler(handler: (() => void) | null) {
+  onUnauthenticated = handler
+}
+
 function xsrfToken(): string | undefined {
   const match = document.cookie.match(/(?:^|;\s*)XSRF-TOKEN=([^;]+)/)
   return match ? decodeURIComponent(match[1]) : undefined
+}
+
+function query(params: Record<string, string | number | undefined | null>): string {
+  const search = new URLSearchParams()
+  for (const [key, value] of Object.entries(params)) {
+    if (value !== undefined && value !== null && value !== '') search.set(key, String(value))
+  }
+  const text = search.toString()
+  return text ? `?${text}` : ''
 }
 
 async function request<T>(method: string, path: string, body?: unknown, retried = false): Promise<T> {
@@ -51,28 +82,65 @@ async function request<T>(method: string, path: string, body?: unknown, retried 
   const data = await response.json().catch(() => ({}))
 
   if (!response.ok) {
+    if (response.status === 401 && !path.startsWith('/auth/')) onUnauthenticated?.()
     throw new ApiError(response.status, data.message ?? `Request failed (${response.status})`, data.errors)
   }
 
   return data as T
 }
 
-export const api = {
-  tenant: () => request<{ data: Tenant }>('GET', '/tenant').then((r) => r.data),
+const data = <T>(promise: Promise<{ data: T }>) => promise.then((r) => r.data)
 
-  me: () => request<{ data: User }>('GET', '/auth/me').then((r) => r.data),
-  login: (email: string, password: string) =>
-    request<{ data: User }>('POST', '/auth/login', { email, password }).then((r) => r.data),
+export const api = {
+  tenant: () => data(request<{ data: Tenant }>('GET', '/tenant')),
+
+  me: () => data(request<{ data: User }>('GET', '/auth/me')),
+  login: (email: string, password: string) => data(request<{ data: User }>('POST', '/auth/login', { email, password })),
   logout: () => request<void>('POST', '/auth/logout'),
+  changePassword: (current_password: string, password: string, password_confirmation: string) =>
+    request<void>('PUT', '/account/password', { current_password, password, password_confirmation }),
+
+  dashboard: () => data(request<{ data: Dashboard }>('GET', '/dashboard')),
 
   departments: {
-    list: () => request<{ data: Department[] }>('GET', '/departments').then((r) => r.data),
-    create: (input: DepartmentInput) =>
-      request<{ data: Department }>('POST', '/departments', input).then((r) => r.data),
-    update: (id: string, input: DepartmentInput) =>
-      request<{ data: Department }>('PUT', `/departments/${id}`, input).then((r) => r.data),
+    list: () => data(request<{ data: Department[] }>('GET', '/departments')),
+    create: (input: DepartmentInput) => data(request<{ data: Department }>('POST', '/departments', input)),
+    update: (id: string, input: DepartmentInput) => data(request<{ data: Department }>('PUT', `/departments/${id}`, input)),
     remove: (id: string) => request<void>('DELETE', `/departments/${id}`),
   },
+
+  employees: {
+    list: (params: { search?: string; department_id?: string; status?: string; page?: number }) =>
+      request<Paginated<Employee>>('GET', `/employees${query(params)}`),
+    create: (input: EmployeeInput) => data(request<{ data: Employee }>('POST', '/employees', input)),
+    update: (id: string, input: EmployeeInput) => data(request<{ data: Employee }>('PUT', `/employees/${id}`, input)),
+    remove: (id: string) => request<void>('DELETE', `/employees/${id}`),
+  },
+
+  users: {
+    list: () => data(request<{ data: User[] }>('GET', '/users')),
+    create: (input: UserInput) => data(request<{ data: User }>('POST', '/users', input)),
+    update: (id: string, input: UserInput) => data(request<{ data: User }>('PUT', `/users/${id}`, input)),
+  },
+
+  leaveTypes: {
+    list: () => data(request<{ data: LeaveType[] }>('GET', '/leave-types')),
+    create: (input: LeaveTypeInput) => data(request<{ data: LeaveType }>('POST', '/leave-types', input)),
+    update: (id: string, input: LeaveTypeInput) => data(request<{ data: LeaveType }>('PUT', `/leave-types/${id}`, input)),
+    remove: (id: string) => request<void>('DELETE', `/leave-types/${id}`),
+  },
+
+  leaveRequests: {
+    list: (params: { status?: LeaveStatus | ''; employee_id?: string }) =>
+      data(request<{ data: LeaveRequest[] }>('GET', `/leave-requests${query(params)}`)),
+    create: (input: LeaveRequestInput) => data(request<{ data: LeaveRequest }>('POST', '/leave-requests', input)),
+    approve: (id: string, note?: string) => data(request<{ data: LeaveRequest }>('POST', `/leave-requests/${id}/approve`, { note })),
+    reject: (id: string, note?: string) => data(request<{ data: LeaveRequest }>('POST', `/leave-requests/${id}/reject`, { note })),
+    cancel: (id: string) => data(request<{ data: LeaveRequest }>('POST', `/leave-requests/${id}/cancel`)),
+  },
+
+  leaveBalances: (employee_id?: string) =>
+    data(request<{ data: LeaveBalance[] }>('GET', `/leave-balances${query({ employee_id })}`)),
 
   /** Readiness probe (outside /api). */
   health: async (): Promise<boolean> => {
@@ -83,4 +151,9 @@ export const api = {
       return false
     }
   },
+}
+
+/** Human-readable message for any thrown value. */
+export function errorMessage(e: unknown): string {
+  return e instanceof ApiError ? e.message : 'Cannot reach the server.'
 }

@@ -1,0 +1,353 @@
+import { useCallback, useEffect, useState, type FormEvent } from 'react'
+import { ApiError, api, errorMessage } from '../api'
+import type { Employee, LeaveBalance, LeaveRequest, LeaveStatus, LeaveType, User } from '../types'
+import { ErrorText, FieldError, Modal, PageHead, StatusBadge } from '../components/ui'
+import { dateRange, formatDate, localToday } from '../format'
+import { Balances } from './DashboardPage'
+
+const FILTERS: { value: LeaveStatus | ''; label: string }[] = [
+  { value: 'pending', label: 'Pending' },
+  { value: 'approved', label: 'Approved' },
+  { value: 'rejected', label: 'Rejected' },
+  { value: 'cancelled', label: 'Cancelled' },
+  { value: '', label: 'All' },
+]
+
+type Decision = { request: LeaveRequest; action: 'approve' | 'reject' }
+
+export function LeavePage({ user }: { user: User }) {
+  const isAdmin = user.role === 'admin'
+  const [status, setStatus] = useState<LeaveStatus | ''>(isAdmin ? 'pending' : '')
+  const [requests, setRequests] = useState<LeaveRequest[] | null>(null)
+  const [balances, setBalances] = useState<LeaveBalance[]>([])
+  const [error, setError] = useState<string | null>(null)
+  const [creating, setCreating] = useState(false)
+  const [deciding, setDeciding] = useState<Decision | null>(null)
+
+  const load = useCallback(async () => {
+    try {
+      const [list, own] = await Promise.all([
+        api.leaveRequests.list({ status }),
+        user.employee ? api.leaveBalances() : Promise.resolve([]),
+      ])
+      setRequests(list)
+      setBalances(own)
+      setError(null)
+    } catch (e) {
+      setError(errorMessage(e))
+    }
+  }, [status, user.employee])
+
+  useEffect(() => {
+    let active = true
+    Promise.all([api.leaveRequests.list({ status }), user.employee ? api.leaveBalances() : Promise.resolve([])])
+      .then(([list, own]) => {
+        if (!active) return
+        setRequests(list)
+        setBalances(own)
+      })
+      .catch((e) => active && setError(errorMessage(e)))
+    return () => {
+      active = false
+    }
+  }, [status, user.employee])
+
+  async function cancel(request: LeaveRequest) {
+    if (!window.confirm('Cancel this leave request?')) return
+    try {
+      await api.leaveRequests.cancel(request.id)
+      await load()
+    } catch (e) {
+      setError(errorMessage(e))
+    }
+  }
+
+  const canRequest = isAdmin || !!user.employee
+
+  return (
+    <section>
+      <PageHead
+        title="Leave"
+        subtitle={isAdmin ? 'Review and decide leave requests.' : 'Your leave balance and requests.'}
+        actions={canRequest && <button onClick={() => setCreating(true)}>+ Request leave</button>}
+      />
+
+      {!canRequest && (
+        <div className="card notice">Your account is not linked to an employee record yet. Ask an administrator.</div>
+      )}
+
+      {balances.length > 0 && <Balances balances={balances} />}
+
+      <div className="tabs" role="tablist">
+        {FILTERS.map((f) => (
+          <button
+            key={f.value || 'all'}
+            role="tab"
+            aria-selected={status === f.value}
+            className={`tab ${status === f.value ? 'active' : ''}`}
+            onClick={() => setStatus(f.value)}
+          >
+            {f.label}
+          </button>
+        ))}
+      </div>
+
+      <ErrorText message={error} />
+      {requests === null && !error && <p className="muted">Loading…</p>}
+
+      {requests?.length === 0 && (
+        <div className="card empty">
+          <p>No requests here.</p>
+        </div>
+      )}
+
+      {requests && requests.length > 0 && (
+        <div className="card table-card">
+          <table>
+            <thead>
+              <tr>
+                {isAdmin && <th>Employee</th>}
+                <th>Type</th>
+                <th>Dates</th>
+                <th className="num">Days</th>
+                <th>Status</th>
+                <th className="actions-col" aria-label="Actions" />
+              </tr>
+            </thead>
+            <tbody>
+              {requests.map((r) => (
+                <tr key={r.id}>
+                  {isAdmin && (
+                    <td>
+                      <div className="strong">{r.employee.full_name}</div>
+                      <div className="muted small">{r.employee.employee_code}</div>
+                    </td>
+                  )}
+                  <td>
+                    {r.leave_type.name}
+                    {r.reason && <div className="muted small">{r.reason}</div>}
+                  </td>
+                  <td>{dateRange(r.start_date, r.end_date)}</td>
+                  <td className="num">{r.days}</td>
+                  <td>
+                    <StatusBadge status={r.status} />
+                    {r.decision_note && <div className="muted small">“{r.decision_note}”</div>}
+                    {r.decided_by && (
+                      <div className="muted small">
+                        by {r.decided_by}, {formatDate(r.decided_at)}
+                      </div>
+                    )}
+                  </td>
+                  <td className="actions">
+                    {r.status === 'pending' && isAdmin && (
+                      <>
+                        <button className="link" onClick={() => setDeciding({ request: r, action: 'approve' })}>
+                          Approve
+                        </button>
+                        <button className="link danger" onClick={() => setDeciding({ request: r, action: 'reject' })}>
+                          Reject
+                        </button>
+                      </>
+                    )}
+                    {r.status === 'pending' && (!isAdmin || r.employee.id === user.employee?.id) && (
+                      <button className="link danger" onClick={() => cancel(r)}>
+                        Cancel
+                      </button>
+                    )}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {creating && (
+        <RequestForm
+          user={user}
+          onClose={() => setCreating(false)}
+          onSaved={() => {
+            setCreating(false)
+            load()
+          }}
+        />
+      )}
+
+      {deciding && (
+        <DecisionForm
+          decision={deciding}
+          onClose={() => setDeciding(null)}
+          onDone={() => {
+            setDeciding(null)
+            load()
+          }}
+        />
+      )}
+    </section>
+  )
+}
+
+function RequestForm({ user, onClose, onSaved }: { user: User; onClose: () => void; onSaved: () => void }) {
+  const isAdmin = user.role === 'admin'
+  const [today] = useState(localToday)
+  const [types, setTypes] = useState<LeaveType[]>([])
+  const [employees, setEmployees] = useState<Employee[]>([])
+  const [employeeId, setEmployeeId] = useState(isAdmin ? '' : (user.employee?.id ?? ''))
+  const [leaveTypeId, setLeaveTypeId] = useState('')
+  const [start, setStart] = useState(today)
+  const [end, setEnd] = useState(today)
+  const [reason, setReason] = useState('')
+  const [errors, setErrors] = useState<ApiError | null>(null)
+  const [general, setGeneral] = useState<string | null>(null)
+  const [saving, setSaving] = useState(false)
+
+  useEffect(() => {
+    api.leaveTypes
+      .list()
+      .then((list) => {
+        const active = list.filter((t) => t.is_active)
+        setTypes(active)
+        if (active[0]) setLeaveTypeId(active[0].id)
+      })
+      .catch((e) => setGeneral(errorMessage(e)))
+    if (isAdmin) {
+      api.employees
+        .list({ status: 'active' })
+        .then((r) => setEmployees(r.data))
+        .catch(() => {})
+    }
+  }, [isAdmin])
+
+  async function submit(event: FormEvent) {
+    event.preventDefault()
+    setSaving(true)
+    setErrors(null)
+    setGeneral(null)
+    try {
+      await api.leaveRequests.create({
+        employee_id: isAdmin ? employeeId || undefined : undefined,
+        leave_type_id: leaveTypeId,
+        start_date: start,
+        end_date: end,
+        reason,
+      })
+      onSaved()
+    } catch (e) {
+      if (e instanceof ApiError && e.status === 422) setErrors(e)
+      else setGeneral(errorMessage(e))
+      setSaving(false)
+    }
+  }
+
+  return (
+    <Modal title="Request leave" onClose={onClose}>
+      <form className="form" onSubmit={submit} noValidate>
+        {isAdmin && (
+          <label>
+            Employee
+            <select value={employeeId} onChange={(e) => setEmployeeId(e.target.value)} autoFocus>
+              <option value="">{user.employee ? `Myself (${user.employee.full_name})` : '— Select employee —'}</option>
+              {employees
+                .filter((e) => e.id !== user.employee?.id)
+                .map((e) => (
+                  <option key={e.id} value={e.id}>
+                    {e.full_name} ({e.employee_code})
+                  </option>
+                ))}
+            </select>
+            <FieldError message={errors?.field('employee_id')} />
+          </label>
+        )}
+        <label>
+          Leave type
+          <select value={leaveTypeId} onChange={(e) => setLeaveTypeId(e.target.value)}>
+            {types.map((t) => (
+              <option key={t.id} value={t.id}>
+                {t.name}
+                {t.days_per_year !== null ? ` (${t.days_per_year} days/year)` : ''}
+              </option>
+            ))}
+          </select>
+          <FieldError message={errors?.field('leave_type_id')} />
+        </label>
+        <div className="form-grid">
+          <label>
+            From
+            <input type="date" value={start} min={isAdmin ? undefined : today} onChange={(e) => {
+              setStart(e.target.value)
+              if (e.target.value > end) setEnd(e.target.value)
+            }} />
+            <FieldError message={errors?.field('start_date')} />
+          </label>
+          <label>
+            To
+            <input type="date" value={end} min={start} onChange={(e) => setEnd(e.target.value)} />
+            <FieldError message={errors?.field('end_date')} />
+          </label>
+        </div>
+        <p className="muted small">Weekends are not counted. The number of working days is calculated for you.</p>
+        <label>
+          Reason <span className="muted small">(optional)</span>
+          <textarea value={reason} onChange={(e) => setReason(e.target.value)} rows={2} maxLength={1000} />
+        </label>
+        <ErrorText message={general} />
+        <div className="form-actions">
+          <button type="submit" disabled={saving || !leaveTypeId}>
+            {saving ? 'Submitting…' : 'Submit request'}
+          </button>
+          <button type="button" className="secondary" onClick={onClose} disabled={saving}>
+            Cancel
+          </button>
+        </div>
+      </form>
+    </Modal>
+  )
+}
+
+function DecisionForm({ decision, onClose, onDone }: { decision: Decision; onClose: () => void; onDone: () => void }) {
+  const { request, action } = decision
+  const [note, setNote] = useState('')
+  const [error, setError] = useState<string | null>(null)
+  const [saving, setSaving] = useState(false)
+
+  async function submit(event: FormEvent) {
+    event.preventDefault()
+    setSaving(true)
+    try {
+      if (action === 'approve') await api.leaveRequests.approve(request.id, note || undefined)
+      else await api.leaveRequests.reject(request.id, note || undefined)
+      onDone()
+    } catch (e) {
+      setError(errorMessage(e))
+      setSaving(false)
+    }
+  }
+
+  return (
+    <Modal title={action === 'approve' ? 'Approve request' : 'Reject request'} onClose={onClose}>
+      <form className="form" onSubmit={submit}>
+        <div className="summary">
+          <div className="strong">{request.employee.full_name}</div>
+          <div className="muted">
+            {request.leave_type.name} · {dateRange(request.start_date, request.end_date)} · {request.days} working day
+            {request.days === 1 ? '' : 's'}
+          </div>
+          {request.reason && <div className="muted small">“{request.reason}”</div>}
+        </div>
+        <label>
+          Note to the employee <span className="muted small">(optional)</span>
+          <textarea value={note} onChange={(e) => setNote(e.target.value)} rows={2} maxLength={1000} autoFocus />
+        </label>
+        <ErrorText message={error} />
+        <div className="form-actions">
+          <button type="submit" className={action === 'reject' ? 'danger' : ''} disabled={saving}>
+            {saving ? 'Saving…' : action === 'approve' ? 'Approve' : 'Reject'}
+          </button>
+          <button type="button" className="secondary" onClick={onClose} disabled={saving}>
+            Cancel
+          </button>
+        </div>
+      </form>
+    </Modal>
+  )
+}
