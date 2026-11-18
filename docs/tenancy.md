@@ -90,14 +90,14 @@ Route::middleware(['web', 'tenant'])->group(function () {
 
 ### Validation
 
-`exists:`/`unique:` rules bypass Eloquent scopes. Always constrain them:
+`exists:`/`unique:` rules bypass Eloquent scopes. Never use the string form for tenant tables; use `App\Tenancy\Validation\TenantRule`:
 
 ```php
-Rule::exists('departments', 'id')->where('tenant_id', $context->id()),
-Rule::unique('departments', 'name')->where('tenant_id', $context->id())->ignore($department),
+TenantRule::exists('departments'),
+TenantRule::unique('departments', 'name')->ignore($department),
 ```
 
-(Tenant-aware rule helpers will be added with the first module, step 5.)
+Reference module: `app/Http/Controllers/Api/DepartmentController.php`, `app/Http/Requests/DepartmentRequest.php`, `tests/Feature/Departments/DepartmentApiTest.php`.
 
 ## 4. What is enforced, and where
 

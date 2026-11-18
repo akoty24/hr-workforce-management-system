@@ -6,6 +6,7 @@ use App\Models\Tenant;
 use App\Models\User;
 use App\Tenancy\TenantScope;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Testing\PendingCommand;
 use Tests\Concerns\RefreshTestDatabase;
 use Tests\TestCase;
 
@@ -13,7 +14,7 @@ class InstallTenantCommandTest extends TestCase
 {
     use RefreshTestDatabase;
 
-    private function install(array $options): \Illuminate\Testing\PendingCommand
+    private function install(array $options): PendingCommand
     {
         return $this->artisan('tenant:install', $options + [
             '--slug' => 'acme',

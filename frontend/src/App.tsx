@@ -1,122 +1,127 @@
-import { useState } from 'react'
-import heroImg from './assets/hero.png'
-import reactLogo from './assets/react.svg'
-import viteLogo from './assets/vite.svg'
-import './App.css'
+import { useEffect, useState } from 'react'
+import { ApiError, api } from './api'
+import type { Tenant, User } from './types'
+import { LoginPage } from './components/LoginPage'
+import { DepartmentsPage } from './components/DepartmentsPage'
+import { HealthBadge } from './components/HealthBadge'
 
-function App() {
-  const [count, setCount] = useState(0)
+type Boot =
+  | { state: 'loading' }
+  | { state: 'no-tenant' }
+  | { state: 'error'; message: string }
+  | { state: 'ready'; tenant: Tenant }
 
-  return (
-    <>
-      <section id="center">
-        <div className="hero">
-          <img src={heroImg} className="base" width="170" height="179" alt="" />
-          <img src={reactLogo} className="framework" alt="React logo" />
-          <img src={viteLogo} className="vite" alt="Vite logo" />
-        </div>
-        <div>
-          <h1>Get started</h1>
-          <p>
-            Edit <code>src/App.tsx</code> and save to test <code>HMR</code>
+export default function App() {
+  const [boot, setBoot] = useState<Boot>({ state: 'loading' })
+  // undefined = still checking the session, null = signed out
+  const [user, setUser] = useState<User | null | undefined>(undefined)
+
+  useEffect(() => {
+    let cancelled = false
+
+    async function start() {
+      try {
+        const tenant = await api.tenant() // also issues the CSRF cookie
+        if (cancelled) return
+        setBoot({ state: 'ready', tenant })
+
+        try {
+          const me = await api.me()
+          if (!cancelled) setUser(me)
+        } catch (e) {
+          if (!cancelled) setUser(null)
+          if (!(e instanceof ApiError && e.status === 401)) throw e
+        }
+      } catch (e) {
+        if (cancelled) return
+        if (e instanceof ApiError && e.status === 404) setBoot({ state: 'no-tenant' })
+        else if (e instanceof ApiError && e.status === 403) setBoot({ state: 'error', message: 'This workspace is suspended.' })
+        else setBoot({ state: 'error', message: 'Cannot reach the server. Is the backend running?' })
+      }
+    }
+
+    start()
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
+  async function logout() {
+    try {
+      await api.logout()
+    } finally {
+      setUser(null)
+    }
+  }
+
+  if (boot.state === 'loading' || (boot.state === 'ready' && user === undefined)) {
+    return <div className="center muted">Loading…</div>
+  }
+
+  if (boot.state === 'no-tenant') {
+    return (
+      <div className="center">
+        <div className="card narrow">
+          <h1>Workspace not found</h1>
+          <p className="muted">No company is set up for this address.</p>
+          <p className="muted small">
+            Create one with <code>php artisan tenant:install</code>.
           </p>
         </div>
-        <button
-          type="button"
-          className="counter"
-          onClick={() => setCount((count) => count + 1)}
-        >
-          Count is {count}
-        </button>
-      </section>
+      </div>
+    )
+  }
 
-      <div className="ticks"></div>
-
-      <section id="next-steps">
-        <div id="docs">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#documentation-icon"></use>
-          </svg>
-          <h2>Documentation</h2>
-          <p>Your questions, answered</p>
-          <ul>
-            <li>
-              <a href="https://vite.dev/" target="_blank">
-                <img className="logo" src={viteLogo} alt="" />
-                Explore Vite
-              </a>
-            </li>
-            <li>
-              <a href="https://react.dev/" target="_blank">
-                <img className="button-icon" src={reactLogo} alt="" />
-                Learn more
-              </a>
-            </li>
-          </ul>
+  if (boot.state === 'error') {
+    return (
+      <div className="center">
+        <div className="card narrow">
+          <h1>Something went wrong</h1>
+          <p className="muted">{boot.message}</p>
+          <button onClick={() => window.location.reload()}>Try again</button>
         </div>
-        <div id="social">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#social-icon"></use>
-          </svg>
-          <h2>Connect with us</h2>
-          <p>Join the Vite community</p>
-          <ul>
-            <li>
-              <a href="https://github.com/vitejs/vite" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#github-icon"></use>
-                </svg>
-                GitHub
-              </a>
-            </li>
-            <li>
-              <a href="https://chat.vite.dev/" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#discord-icon"></use>
-                </svg>
-                Discord
-              </a>
-            </li>
-            <li>
-              <a href="https://x.com/vite_js" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#x-icon"></use>
-                </svg>
-                X.com
-              </a>
-            </li>
-            <li>
-              <a href="https://bsky.app/profile/vite.dev" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#bluesky-icon"></use>
-                </svg>
-                Bluesky
-              </a>
-            </li>
-          </ul>
-        </div>
-      </section>
+      </div>
+    )
+  }
 
-      <div className="ticks"></div>
-      <section id="spacer"></section>
-    </>
+  const { tenant } = boot
+
+  if (!user) {
+    return <LoginPage tenant={tenant} onLogin={setUser} />
+  }
+
+  return (
+    <div className="layout">
+      <header className="topbar">
+        <div className="brand">
+          <span className="logo" aria-hidden>
+            HR
+          </span>
+          <div>
+            <div className="brand-name">{tenant.name}</div>
+            <div className="muted small">HR Workforce</div>
+          </div>
+        </div>
+        <div className="user">
+          <div className="user-meta">
+            <div>{user.name}</div>
+            <div className="muted small">
+              {user.email} · <span className={`role role-${user.role}`}>{user.role}</span>
+            </div>
+          </div>
+          <button className="secondary" onClick={logout}>
+            Sign out
+          </button>
+        </div>
+      </header>
+
+      <main className="content">
+        <DepartmentsPage user={user} onSessionExpired={() => setUser(null)} />
+      </main>
+
+      <footer className="footer muted small">
+        <HealthBadge />
+      </footer>
+    </div>
   )
 }
-
-export default App

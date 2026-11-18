@@ -114,7 +114,8 @@ Implemented in step 3 — see the [tenancy developer guide](tenancy.md) for usag
 ### 4.4 Users and administrators
 
 - `users` are tenant-scoped; email unique per tenant. The tenant is known before login (subdomain in SaaS, single tenant on-prem).
-- Platform administrators live in a separate table with a separate guard and are only routable when `PLATFORM_FEATURES_ENABLED=true`.
+- Roles inside a company: `admin` (manages data) and `employee` (read access). Authorization uses Laravel policies.
+- Platform administrators (SaaS operators) will live in a separate table with a separate guard and are only routable when `PLATFORM_FEATURES_ENABLED=true` (not built yet).
 
 ### 4.5 Tenant provisioning
 
@@ -164,9 +165,9 @@ Redis is never required.
 
 - Vite builds the SPA; the Docker build copies it to `backend/public/app/`.
 - Hashed assets are served directly by the web server.
-- A Laravel fallback route returns `index.html` for all paths except `/api/*`, `/sanctum/*`, `/up`, `/health/*`, injecting runtime config as `window.__APP_CONFIG__` (tenant name, locale, enabled features). **No build-time `VITE_*` config** — one build serves every customer.
-- Auth: Laravel Sanctum stateful (cookie) SPA authentication. Same origin ⇒ no CORS.
-- Local dev: Vite dev server proxies `/api` and `/sanctum` to `php artisan serve`, preserving same-origin cookie behaviour. Multi-tenant dev uses `*.localhost` subdomains.
+- Laravel’s router fallback (`SpaController`) returns `index.html` for every unmatched GET page path; `/api/*` misses are JSON 404s. The SPA loads runtime config from `GET /api/v1/tenant` at start-up ([ADR 0009](adr/0009-session-auth-without-sanctum.md)). **No build-time `VITE_*` config** — one build serves every customer.
+- Auth: Laravel session guard + CSRF in the `web` middleware group (Sanctum deferred until token clients exist — ADR 0009). Same origin ⇒ no CORS.
+- Local dev: Vite dev server proxies `/api`, `/health` and `/up` to `php artisan serve`, preserving same-origin cookie behaviour. `npm run build` writes to `backend/public/app/`. Multi-tenant dev uses `*.localhost` subdomains.
 
 ## 8. Runtime and deployment
 
@@ -302,8 +303,8 @@ Subscription billing, multi-tenant on-prem, Octane, licensing/activation for on-
 
 1. ✅ Monorepo, docs, ADRs.
 2. ✅ Backend baseline: MySQL-driver config (MySQL 8.4 target), local XAMPP MariaDB 10.4 setup, trusted proxies, `/up`, `/health/ready`. Verified on local MariaDB only.
-3. ✅ *(implemented — awaiting review)* Tenancy core: UUIDv7 `tenants`, `TenantContext`, `single`/`subdomain` resolvers, `tenant` middleware, fail-closed `BelongsToTenant`, composite-FK schema macros, queue propagation, tenant-prefixed storage/cache, `CreateTenant` + `tenant:create`, tests on MariaDB. See [tenancy.md](tenancy.md).
-4. Auth: Sanctum SPA auth for tenant users, separate platform-admin guard, `tenant:install`.
-5. Reference module: Departments + reusable cross-tenant isolation test suite.
-6. SPA wiring: fallback route, runtime config injection, Vite dev proxy.
+3. ✅ Tenancy core: UUIDv7 `tenants`, `TenantContext`, `single`/`subdomain` resolvers, `tenant` middleware, fail-closed `BelongsToTenant`, composite-FK schema macros, queue propagation, tenant-prefixed storage/cache, `CreateTenant` + `tenant:create`, tests on MariaDB. See [tenancy.md](tenancy.md).
+4. ✅ Auth: tenant-scoped users (admin/employee), session auth + CSRF for the SPA, rate-limited login, `tenant.auth`, `tenant:install`, demo seeder. *(Platform-admin guard deferred to the platform module.)*
+5. ✅ Reference module: Departments CRUD API, `TenantRule` validation helpers, policies, isolation tests.
+6. ✅ SPA: login, departments management, health indicator; Vite dev proxy; production build served by Laravel.
 7. Deployment: Dockerfile, entrypoint + roles, on-prem compose, optional `railway.toml`, CI (MySQL 8.4 service).

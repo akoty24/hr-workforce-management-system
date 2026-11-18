@@ -14,6 +14,30 @@ Multi-tenant HR & workforce management platform. One codebase, two deployment mo
 | `deploy/` | Docker image, entrypoint, on-prem compose *(coming)* |
 | `docs/` | [Architecture](docs/architecture.md), [tenancy guide](docs/tenancy.md), [decision records](docs/adr/) |
 
+## Run locally
+
+Requirements: PHP 8.2+, Composer, Node 20+, and a MySQL-compatible server (local dev currently uses XAMPP MariaDB 10.4 — see [architecture §8.7](docs/architecture.md#87-local-development-xampp-mariadb-104--local-only)).
+
+```bash
+# once
+cd backend
+composer install
+cp .env.example .env            # set DB_PASSWORD
+php artisan key:generate
+php artisan migrate --seed      # demo company + accounts + departments
+cd ../frontend && npm install
+
+# every time (two terminals)
+cd backend  && php artisan serve    # http://127.0.0.1:8000
+cd frontend && npm run dev          # http://localhost:5173  ← open this
+```
+
+Demo accounts (local only): `admin@demo.test` / `employee@demo.test`, password `DemoPassword123`.
+
+Production-like: `npm run build` in `frontend/` writes the SPA into `backend/public/app/`; then http://127.0.0.1:8000 serves everything from Laravel.
+
+Tests: `cd backend && php artisan test` (uses the `hr_workforce_testing` database).
+
 ## Status
 
-Foundation phase. See [docs/architecture.md](docs/architecture.md#implementation-plan) for the plan.
+Implemented: tenancy core, authentication, Departments module, SPA. See [docs/architecture.md](docs/architecture.md#implementation-plan).
