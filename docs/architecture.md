@@ -191,8 +191,8 @@ Multi-stage Dockerfile, one image per release:
 
 ### 8.3 Entrypoint
 
-1. Validate required env (pre-flight `php artisan system:check`).
-2. If `RUN_MIGRATIONS=true`: `php artisan migrate --force --isolated` (lock prevents concurrent replicas migrating twice). Failure exits non-zero so a broken release never serves traffic.
+1. Require `APP_KEY`. (`php artisan system:check` is available for a full pre-flight check: config, DB, migrations, tenants, writable paths.)
+2. If `RUN_MIGRATIONS=true` (set on exactly one service): `php artisan migrate --force`. Failure exits non-zero so a broken release never serves traffic. (`--isolated` is not used: its lock needs the cache table, which does not exist before the first migration.)
 3. Cache config/routes/views.
 4. Start the role's process.
 
@@ -307,4 +307,15 @@ Subscription billing, multi-tenant on-prem, Octane, licensing/activation for on-
 4. ✅ Auth: tenant-scoped users (admin/employee), session auth + CSRF for the SPA, rate-limited login, `tenant.auth`, `tenant:install`, demo seeder. *(Platform-admin guard deferred to the platform module.)*
 5. ✅ Reference module: Departments CRUD API, `TenantRule` validation helpers, policies, isolation tests.
 6. ✅ SPA: login, departments management, health indicator; Vite dev proxy; production build served by Laravel.
-7. Deployment: Dockerfile, entrypoint + roles, on-prem compose, optional `railway.toml`, CI (MySQL 8.4 service).
+7. ✅ *(written, not yet run — no Docker locally)* Deployment: Dockerfile, entrypoint + roles, on-prem Compose bundle and guide, `railway.toml`, CI with MySQL 8.4, `system:check`. See [deployment.md](deployment.md).
+
+### Modules delivered after the foundation
+
+- Users: admin-managed accounts, roles (admin/employee), deactivation, own password change.
+- Employees: records with department and optional sign-in account; search, filters, pagination.
+- Leave: types with annual allowance; requests in working days (`HR_WEEKEND_DAYS`); overlap/balance checks; approve/reject/cancel; balances.
+- Dashboard: admin overview and employee self-service.
+
+### Not built yet
+
+Password reset by email (needs a tenant-aware token flow), payroll, attendance, file uploads UI, audit log, Arabic/RTL UI, platform (SaaS operator) console, billing.

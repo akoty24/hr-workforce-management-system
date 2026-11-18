@@ -11,7 +11,7 @@ Multi-tenant HR & workforce management platform. One codebase, two deployment mo
 |---|---|
 | `backend/` | Laravel 12 API + serves the built SPA |
 | `frontend/` | React 19 + Vite SPA |
-| `deploy/` | Docker image, entrypoint, on-prem compose *(coming)* |
+| `deploy/` | Docker image, entrypoint, on-prem Compose bundle — see [docs/deployment.md](docs/deployment.md) |
 | `docs/` | [Architecture](docs/architecture.md), [tenancy guide](docs/tenancy.md), [decision records](docs/adr/) |
 
 ## Run locally
@@ -40,4 +40,4 @@ Tests: `cd backend && php artisan test` (uses the `hr_workforce_testing` databas
 
 ## Status
 
-Implemented: tenancy core, authentication, Departments module, SPA. See [docs/architecture.md](docs/architecture.md#implementation-plan).
+Implemented: multi-tenancy, authentication, users, departments, employees, leave management, dashboard, SPA, deployment files. See [docs/architecture.md](docs/architecture.md#implementation-plan) and [docs/deployment.md](docs/deployment.md).
