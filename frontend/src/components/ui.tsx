@@ -2,7 +2,18 @@ import { useEffect, type ReactNode } from 'react'
 import type { EmployeeStatus, LeaveStatus } from '../types'
 
 /** Accessible modal dialog (Escape / backdrop click closes). */
-export function Modal({ title, onClose, children }: { title: string; onClose: () => void; children: ReactNode }) {
+export function Modal({
+  title,
+  onClose,
+  children,
+  wide = false,
+}: {
+  title: string
+  onClose: () => void
+  children: ReactNode
+  /** Larger dialog for long forms (3-column grid on wide screens). */
+  wide?: boolean
+}) {
   useEffect(() => {
     const key = (e: KeyboardEvent) => e.key === 'Escape' && onClose()
     window.addEventListener('keydown', key)
@@ -11,7 +22,7 @@ export function Modal({ title, onClose, children }: { title: string; onClose: ()
 
   return (
     <div className="backdrop" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
-      <div className="modal" role="dialog" aria-modal="true" aria-label={title}>
+      <div className={`modal ${wide ? 'modal-wide' : ''}`} role="dialog" aria-modal="true" aria-label={title}>
         <div className="modal-head">
           <h2>{title}</h2>
           <button className="icon" onClick={onClose} aria-label="Close">

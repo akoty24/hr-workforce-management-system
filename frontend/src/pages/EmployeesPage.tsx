@@ -245,7 +245,7 @@ function EmployeeForm({
   )
 
   return (
-    <Modal title={employee ? `Edit ${employee.full_name}` : 'New employee'} onClose={onClose}>
+    <Modal title={employee ? `Edit ${employee.full_name}` : 'New employee'} onClose={onClose} wide>
       <form className="form" onSubmit={submit} noValidate>
         <div className="form-grid">
           {field('first_name', 'First name', { required: true, autoFocus: true, maxLength: 80 })}

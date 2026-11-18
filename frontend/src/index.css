@@ -777,6 +777,16 @@ button.tab.active {
   padding: 20px 24px 24px;
 }
 
+.modal-wide {
+  max-width: 960px;
+}
+
+@media (min-width: 900px) {
+  .modal-wide .form-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
 .modal-head {
   display: flex;
   justify-content: space-between;
