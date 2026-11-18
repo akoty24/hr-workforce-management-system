@@ -12,7 +12,7 @@ Multi-tenant HR & workforce management platform. One codebase, two deployment mo
 | `backend/` | Laravel 12 API + serves the built SPA |
 | `frontend/` | React 19 + Vite SPA |
 | `deploy/` | Docker image, entrypoint, on-prem compose *(coming)* |
-| `docs/` | [Architecture](docs/architecture.md) and [decision records](docs/adr/) |
+| `docs/` | [Architecture](docs/architecture.md), [tenancy guide](docs/tenancy.md), [decision records](docs/adr/) |
 
 ## Status
 

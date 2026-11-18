@@ -58,6 +58,8 @@ Behaviour differs **only** through environment variables:
 ```dotenv
 DEPLOYMENT_MODE=saas|onprem
 TENANCY_RESOLVER=subdomain|single
+TENANCY_BASE_DOMAIN=hrworkforce.com        # subdomain resolver only
+TENANCY_SINGLE_TENANT=                  # single resolver: optional slug pin
 PLATFORM_FEATURES_ENABLED=true|false
 CONTAINER_ROLE=web|worker|scheduler|all
 RUN_MIGRATIONS=true|false
@@ -85,14 +87,17 @@ Single shared MySQL database, `tenant_id` column on every tenant-owned table. On
 
 ### 4.2 Components
 
+Implemented in step 3 — see the [tenancy developer guide](tenancy.md) for usage rules.
+
 | Component | Responsibility |
 |---|---|
 | `tenants` table | `id` (UUIDv7), `slug`, `name`, `status` (active/suspended), settings |
 | `TenantContext` | Request/job/command-scoped holder of the current tenant |
 | `TenantResolver` interface | `SubdomainTenantResolver` (SaaS), `SingleTenantResolver` (on-prem, dev) |
-| `ResolveTenant` middleware | Resolves tenant, rejects unknown/suspended tenants, sets `TenantContext` |
+| `ResolveTenant` middleware (`tenant`) | Resolves tenant → 404 unknown, 403 suspended → sets `TenantContext`; ordered before route-model binding |
 | `BelongsToTenant` trait | Global scope filtering by `tenant_id`; auto-fills `tenant_id` on create |
-| Tenant-aware job middleware | Serialises `tenant_id` into queued jobs and restores context on execution |
+| Queue propagation (payload hook + `JobProcessing` listener) | Every queued job records `tenant_id` and runs under exactly that tenant; suspended/missing tenant → job fails |
+| Schema macros | `tenantId()`, `tenantScopedKey()`, `tenantForeignUuid()` for tenant columns and composite FKs |
 | `TenantFileStorage` | Prefixes paths with `tenants/{id}/` on the configured disk |
 | Tenant cache prefix | Cache keys namespaced per tenant |
 
@@ -114,7 +119,8 @@ Single shared MySQL database, `tenant_id` column on every tenant-owned table. On
 ### 4.5 Tenant provisioning
 
 One `CreateTenant` action, used by:
-- `php artisan tenant:install` (on-prem install, dev, Railway testing);
+- `php artisan tenant:create {slug} {name}` (available now);
+- `php artisan tenant:install` (step 4: tenant + first admin user, for on-prem, dev, Railway testing);
 - SaaS signup (later, in the platform module).
 
 ## 5. Identifiers
@@ -267,7 +273,7 @@ php artisan serve         # http://localhost:8000/up, /health/ready
 - MariaDB 10.4 is end-of-life and differs from MySQL 8.4. Passing locally does **not** mean passing on MySQL 8.4.
 - Avoid engine-specific features in migrations and queries unless verified on MySQL 8.4: JSON column functions, `CHECK` constraints, explicit collations, `RENAME COLUMN`, functional indexes, `uuid()`/`UUID_TO_BIN()` SQL functions.
 - Never override `DB_COLLATION`; the shared `utf8mb4_unicode_ci` default is what keeps uniqueness and sorting identical across environments.
-- The fast PHPUnit run currently uses in-memory SQLite (framework default). From step 3, when the first database-dependent tests (tenancy isolation, composite keys) arrive, tests run against a dedicated `hr_workforce_testing` database on the same server. MySQL 8.4 verification happens in CI (step 7) and on Railway.
+- Tests run against a dedicated `hr_workforce_testing` database on the same server (forced in `phpunit.xml`; the test helper refuses any database not ending in `_testing`). MySQL 8.4 verification happens in CI (step 7) and on Railway.
 
 ## 9. Trade-offs
 
@@ -286,7 +292,6 @@ php artisan serve         # http://localhost:8000/up, /health/ready
 | Migrate on container start | Bad migration blocks boot | Intentional: never serve a half-migrated release |
 | Local dev on XAMPP MariaDB 10.4 | Engine differs from production MySQL 8.4; MariaDB 10.4 is EOL | No extra local install; identical code and `mysql` driver; avoid engine-specific SQL; MySQL 8.4 verified in CI/Railway |
 | `utf8mb4_unicode_ci` instead of `utf8mb4_0900_ai_ci` | Older Unicode collation rules (UCA 4.0); marginally slower comparisons on MySQL 8 | Identical behaviour in every environment; no costly collation migration later |
-| SQLite for fast local tests | Can miss MySQL-specific behaviour | CI runs everything against MySQL 8.4 |
 | No CDN | Laravel serves assets | Hashed filenames — CDN can be added without code change |
 
 ## 10. Out of scope for MVP
@@ -297,7 +302,7 @@ Subscription billing, multi-tenant on-prem, Octane, licensing/activation for on-
 
 1. ✅ Monorepo, docs, ADRs.
 2. ✅ Backend baseline: MySQL-driver config (MySQL 8.4 target), local XAMPP MariaDB 10.4 setup, trusted proxies, `/up`, `/health/ready`. Verified on local MariaDB only.
-3. Tenancy core: UUIDv7, `tenants`, `TenantContext`, resolvers, fail-closed scope, job middleware, tenant-prefixed storage/cache.
+3. ✅ *(implemented — awaiting review)* Tenancy core: UUIDv7 `tenants`, `TenantContext`, `single`/`subdomain` resolvers, `tenant` middleware, fail-closed `BelongsToTenant`, composite-FK schema macros, queue propagation, tenant-prefixed storage/cache, `CreateTenant` + `tenant:create`, tests on MariaDB. See [tenancy.md](tenancy.md).
 4. Auth: Sanctum SPA auth for tenant users, separate platform-admin guard, `tenant:install`.
 5. Reference module: Departments + reusable cross-tenant isolation test suite.
 6. SPA wiring: fallback route, runtime config injection, Vite dev proxy.
