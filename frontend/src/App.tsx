@@ -8,6 +8,7 @@ import { HealthBadge } from './components/HealthBadge'
 import { DashboardPage } from './pages/DashboardPage'
 import { EmployeesPage } from './pages/EmployeesPage'
 import { DepartmentsPage } from './pages/DepartmentsPage'
+import { ShortLeavePage } from './pages/ShortLeavePage'
 import { LeavePage } from './pages/LeavePage'
 import { LeaveTypesPage } from './pages/LeaveTypesPage'
 import { UsersPage } from './pages/UsersPage'
@@ -30,8 +31,9 @@ interface NavItem {
 const NAV: NavItem[] = [
   { path: '/', label: 'Dashboard', icon: '▦' },
   { path: '/employees', label: 'Employees', icon: '👥', roles: ['admin', 'team_leader'] },
-  { path: '/departments', label: 'Departments', icon: '🏢' },
+  { path: '/departments', label: 'Departments', icon: '🏢', roles: ['admin'] },
   { path: '/leave', label: 'Leave', icon: '🗓' },
+  { path: '/permissions', label: 'Permissions', icon: '⏱' },
   { path: '/leave-types', label: 'Leave types', icon: '⚙', roles: ['admin'] },
   { path: '/users', label: 'Users', icon: '🔑', roles: ['admin'] },
   { path: '/account', label: 'My account', icon: '👤' },
@@ -140,6 +142,9 @@ export default function App() {
       break
     case '/leave':
       page = <LeavePage user={user} />
+      break
+    case '/permissions':
+      page = <ShortLeavePage user={user} />
       break
     case '/leave-types':
       page = <LeaveTypesPage />

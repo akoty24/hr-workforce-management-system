@@ -2,9 +2,9 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Http\Controllers\Api\Concerns\HandlesEmployeeRequests;
 use App\Http\Resources\LeaveRequestResource;
 use App\Leave\LeaveService;
-use App\Models\Employee;
 use App\Models\LeaveRequest;
 use App\Models\LeaveStatus;
 use App\Models\LeaveType;
@@ -20,6 +20,8 @@ use Illuminate\Validation\ValidationException;
 
 class LeaveRequestController
 {
+    use HandlesEmployeeRequests;
+
     private const RELATIONS = ['employee', 'leaveType', 'decider'];
 
     public function __construct(private readonly LeaveService $leave) {}
@@ -35,22 +37,9 @@ class LeaveRequestController
 
         /** @var User $user */
         $user = $request->user();
-        $ownEmployeeId = $user->employee?->id;
-        $scope = $filters['scope'] ?? null;
 
         $query = LeaveRequest::query()->with(self::RELATIONS);
-
-        if ($scope === 'mine' || (! $user->isAdmin() && ! $user->isTeamLeader())) {
-            // Employees only ever see their own requests.
-            $query->whereHas('employee', fn ($q) => $q->where('user_id', $user->id));
-        } elseif ($scope === 'team' || $user->isTeamLeader()) {
-            $teamOnly = $scope === 'team';
-            // Team leaders: their direct reports (and their own, unless scope=team).
-            // Grouped: an ungrouped orWhere would escape the whereHas join condition.
-            $query->whereHas('employee', fn ($q) => $q->where(fn ($w) => $w
-                ->where('manager_id', $ownEmployeeId ?? '-')
-                ->unless($teamOnly, fn ($w) => $w->orWhere('user_id', $user->id))));
-        }
+        $this->scopeToViewer($query, $user, $filters['scope'] ?? null);
 
         if ($filters['employee_id'] ?? null) {
             $query->where('employee_id', $filters['employee_id']);
@@ -139,37 +128,5 @@ class LeaveRequestController
         $this->leave->decide($leaveRequest, $request->user(), $status, filled($data['note'] ?? null) ? trim($data['note']) : null);
 
         return new LeaveRequestResource($leaveRequest->load(self::RELATIONS));
-    }
-
-    /**
-     * Admins may file on behalf of any employee (or themselves); everyone
-     * else files only for the employee record linked to their account.
-     */
-    private function resolveEmployee(User $user, ?string $employeeId): Employee
-    {
-        if ($user->isAdmin() && $employeeId) {
-            return Employee::query()->findOrFail($employeeId);
-        }
-
-        $own = $user->employee;
-
-        if (! $own) {
-            throw ValidationException::withMessages([
-                'employee_id' => $user->isAdmin()
-                    ? 'Select the employee this request is for.'
-                    : 'Your account is not linked to an employee record. Ask an administrator.',
-            ]);
-        }
-
-        if (! $user->isAdmin() && $employeeId && $employeeId !== $own->id) {
-            abort(403, 'You can only request leave for yourself.');
-        }
-
-        return $own;
-    }
-
-    private function notPending(): JsonResponse
-    {
-        return response()->json(['message' => 'Only pending requests can be changed.'], 409);
     }
 }

@@ -12,4 +12,10 @@ return [
         explode(',', (string) env('HR_WEEKEND_DAYS', '5,6')),
     ), fn (int $day) => $day >= 1 && $day <= 7)),
 
+    /*
+    | Longest hourly permission ("short leave") an employee may request in a
+    | single day, in minutes.
+    */
+    'short_leave_max_minutes' => (int) env('HR_SHORT_LEAVE_MAX_MINUTES', 120),
+
 ];

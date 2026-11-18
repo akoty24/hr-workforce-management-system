@@ -316,6 +316,8 @@ Subscription billing, multi-tenant on-prem, Octane, licensing/activation for on-
 - Employees: records with department and optional sign-in account; search, filters, pagination.
 - Leave: types with annual allowance; requests in working days (`HR_WEEKEND_DAYS`); overlap/balance checks; approve/reject/cancel; balances.
   - Optional first-year proration per leave type (`prorate_first_year`): allowance × months left in the hire year ÷ 12, hire month counted when joined by the 15th, rounded to the nearest day. Leave cannot start before the hire date.
+- Hourly permissions (`short_leaves`): one working day, from/to time (HH:MM), max `HR_SHORT_LEAVE_MAX_MINUTES` (120); no overlap with another permission or a leave day; same approval rules as leave; not deducted from leave balance.
+- Departments page is admin-only in the UI (the list API stays readable for filters).
 - Dashboard: admin overview and employee self-service.
 
 ### Not built yet

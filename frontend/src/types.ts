@@ -107,6 +107,30 @@ export interface LeaveRequest {
   created_at: string | null
 }
 
+/** Hourly permission (part of one working day). Times are HH:MM. */
+export interface ShortLeave {
+  id: string
+  employee: { id: string; full_name: string; employee_code: string }
+  date: string
+  start_time: string
+  end_time: string
+  minutes: number
+  reason: string | null
+  status: LeaveStatus
+  decided_by?: string | null
+  decided_at: string | null
+  decision_note: string | null
+  created_at: string | null
+}
+
+export interface ShortLeaveInput {
+  employee_id?: string
+  date: string
+  start_time: string
+  end_time: string
+  reason: string
+}
+
 export interface LeaveRequestInput {
   employee_id?: string
   leave_type_id: string

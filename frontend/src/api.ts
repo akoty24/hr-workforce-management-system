@@ -11,6 +11,8 @@ import type {
   LeaveType,
   LeaveTypeInput,
   Paginated,
+  ShortLeave,
+  ShortLeaveInput,
   Tenant,
   User,
   UserInput,
@@ -137,6 +139,15 @@ export const api = {
     approve: (id: string, note?: string) => data(request<{ data: LeaveRequest }>('POST', `/leave-requests/${id}/approve`, { note })),
     reject: (id: string, note?: string) => data(request<{ data: LeaveRequest }>('POST', `/leave-requests/${id}/reject`, { note })),
     cancel: (id: string) => data(request<{ data: LeaveRequest }>('POST', `/leave-requests/${id}/cancel`)),
+  },
+
+  shortLeaves: {
+    list: (params: { status?: LeaveStatus | ''; employee_id?: string; scope?: 'mine' | 'team' }) =>
+      data(request<{ data: ShortLeave[] }>('GET', `/short-leaves${query(params)}`)),
+    create: (input: ShortLeaveInput) => data(request<{ data: ShortLeave }>('POST', '/short-leaves', input)),
+    approve: (id: string, note?: string) => data(request<{ data: ShortLeave }>('POST', `/short-leaves/${id}/approve`, { note })),
+    reject: (id: string, note?: string) => data(request<{ data: ShortLeave }>('POST', `/short-leaves/${id}/reject`, { note })),
+    cancel: (id: string) => data(request<{ data: ShortLeave }>('POST', `/short-leaves/${id}/cancel`)),
   },
 
   leaveBalances: (employee_id?: string) =>

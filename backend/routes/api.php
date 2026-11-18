@@ -8,6 +8,7 @@ use App\Http\Controllers\Api\EmployeeController;
 use App\Http\Controllers\Api\LeaveBalanceController;
 use App\Http\Controllers\Api\LeaveRequestController;
 use App\Http\Controllers\Api\LeaveTypeController;
+use App\Http\Controllers\Api\ShortLeaveController;
 use App\Http\Controllers\Api\UserController;
 use Illuminate\Support\Facades\Route;
 
@@ -40,4 +41,12 @@ Route::middleware('tenant.auth')->group(function () {
     Route::post('/leave-requests/{leave_request}/approve', [LeaveRequestController::class, 'approve'])->name('leave-requests.approve');
     Route::post('/leave-requests/{leave_request}/reject', [LeaveRequestController::class, 'reject'])->name('leave-requests.reject');
     Route::post('/leave-requests/{leave_request}/cancel', [LeaveRequestController::class, 'cancel'])->name('leave-requests.cancel');
+
+    // Hourly permissions.
+    // Explicit name: Laravel would singularise "leaves" to {short_leaf}.
+    Route::apiResource('short-leaves', ShortLeaveController::class)->only(['index', 'store', 'show'])
+        ->parameters(['short-leaves' => 'short_leave']);
+    Route::post('/short-leaves/{short_leave}/approve', [ShortLeaveController::class, 'approve'])->name('short-leaves.approve');
+    Route::post('/short-leaves/{short_leave}/reject', [ShortLeaveController::class, 'reject'])->name('short-leaves.reject');
+    Route::post('/short-leaves/{short_leave}/cancel', [ShortLeaveController::class, 'cancel'])->name('short-leaves.cancel');
 });
