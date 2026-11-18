@@ -110,7 +110,12 @@ export function Balances({ balances }: { balances: LeaveBalance[] }) {
           <div className="stat-value">{b.remaining ?? '∞'}</div>
           <div className="stat-label">{b.leave_type.name} remaining</div>
           <div className="muted small">
-            {b.allowance === null ? 'No annual limit' : `${b.allowance} per year`} · {b.approved} taken
+            {b.allowance === null
+              ? 'No annual limit'
+              : b.allowance !== b.full_allowance
+                ? `${b.allowance} this year (prorated from ${b.full_allowance})`
+                : `${b.allowance} per year`}{' '}
+            · {b.approved} taken
             {b.pending > 0 && ` · ${b.pending} pending`}
           </div>
         </div>

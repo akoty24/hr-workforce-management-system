@@ -79,12 +79,14 @@ export interface LeaveType {
   id: string
   name: string
   days_per_year: number | null
+  prorate_first_year: boolean
   is_active: boolean
 }
 
 export interface LeaveTypeInput {
   name: string
   days_per_year: number | null
+  prorate_first_year: boolean
   is_active: boolean
 }
 
@@ -115,7 +117,10 @@ export interface LeaveRequestInput {
 
 export interface LeaveBalance {
   leave_type: { id: string; name: string }
+  /** Entitlement this year (prorated in the hire year when the type says so). */
   allowance: number | null
+  /** The type's full yearly allowance. */
+  full_allowance: number | null
   approved: number
   pending: number
   remaining: number | null

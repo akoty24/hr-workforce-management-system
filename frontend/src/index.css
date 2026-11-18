@@ -293,8 +293,11 @@ button.link:hover:not(:disabled) {
   text-decoration: underline;
 }
 
+/* Must beat `button.danger` (filled red) declared later in this file. */
 button.link.danger {
   color: var(--danger);
+  background: none;
+  border: none;
 }
 
 /* ---------- table ---------- */

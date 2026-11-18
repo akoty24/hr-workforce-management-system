@@ -33,9 +33,39 @@ final class LeaveService
     }
 
     /**
+     * Days of a leave type the employee is entitled to in a calendar year
+     * (null = unlimited).
+     *
+     * For prorated types, the hire year gets a share of the yearly allowance
+     * for the months left in that year: the hire month counts when the
+     * employee joined on or before the 15th. The result is rounded to the
+     * nearest whole day. Years before the hire year get nothing.
+     */
+    public function allowance(Employee $employee, LeaveType $type, int $year): ?int
+    {
+        if ($type->days_per_year === null) {
+            return null;
+        }
+
+        $hired = $employee->hire_date;
+
+        if (! $type->prorate_first_year || $hired === null || $hired->year < $year) {
+            return $type->days_per_year;
+        }
+
+        if ($hired->year > $year) {
+            return 0;
+        }
+
+        $months = 12 - $hired->month + ($hired->day <= 15 ? 1 : 0);
+
+        return (int) round($type->days_per_year * $months / 12);
+    }
+
+    /**
      * Balance per active leave type for a calendar year.
      *
-     * @return list<array{leave_type: array{id: string, name: string}, allowance: int|null, approved: int, pending: int, remaining: int|null}>
+     * @return list<array{leave_type: array{id: string, name: string}, allowance: int|null, full_allowance: int|null, approved: int, pending: int, remaining: int|null}>
      */
     public function balances(Employee $employee, int $year): array
     {
@@ -48,16 +78,19 @@ final class LeaveService
             ->get();
 
         return LeaveType::query()->where('is_active', true)->orderBy('name')->get()
-            ->map(function (LeaveType $type) use ($used) {
+            ->map(function (LeaveType $type) use ($used, $employee, $year) {
                 $approved = (int) $used->where('leave_type_id', $type->id)->where('status', LeaveStatus::Approved)->sum('total');
                 $pending = (int) $used->where('leave_type_id', $type->id)->where('status', LeaveStatus::Pending)->sum('total');
 
+                $allowance = $this->allowance($employee, $type, $year);
+
                 return [
                     'leave_type' => ['id' => $type->id, 'name' => $type->name],
-                    'allowance' => $type->days_per_year,
+                    'allowance' => $allowance,
+                    'full_allowance' => $type->days_per_year,
                     'approved' => $approved,
                     'pending' => $pending,
-                    'remaining' => $type->days_per_year === null ? null : $type->days_per_year - $approved - $pending,
+                    'remaining' => $allowance === null ? null : max(0, $allowance - $approved - $pending),
                 ];
             })
             ->values()
@@ -83,6 +116,10 @@ final class LeaveService
                 throw ValidationException::withMessages(['end_date' => 'A request cannot span two calendar years. Split it into two requests.']);
             }
 
+            if ($employee->hire_date !== null && $start->lt($employee->hire_date)) {
+                throw ValidationException::withMessages(['start_date' => 'Leave cannot start before the hire date ('.$employee->hire_date->toDateString().').']);
+            }
+
             $days = $this->workingDays($start, $end);
 
             if ($days === 0) {
@@ -100,7 +137,9 @@ final class LeaveService
                 throw ValidationException::withMessages(['start_date' => 'This period overlaps another pending or approved leave request.']);
             }
 
-            if ($type->days_per_year !== null) {
+            $allowance = $this->allowance($employee, $type, $start->year);
+
+            if ($allowance !== null) {
                 $used = (int) LeaveRequest::query()
                     ->where('employee_id', $employee->id)
                     ->where('leave_type_id', $type->id)
@@ -108,7 +147,7 @@ final class LeaveService
                     ->whereYear('start_date', $start->year)
                     ->sum('days');
 
-                $remaining = $type->days_per_year - $used;
+                $remaining = max(0, $allowance - $used);
 
                 if ($days > $remaining) {
                     throw ValidationException::withMessages([

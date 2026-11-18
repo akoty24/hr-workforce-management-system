@@ -76,6 +76,8 @@ class DatabaseSeeder extends Seeder
                 ['EMP-006', 'Youssef', 'Adel', 'Sales', 'Sales Manager', '2018-11-11', EmployeeStatus::Active, null],
                 ['EMP-007', 'Laila', 'Samir', 'Finance', 'Financial Analyst', '2024-02-18', EmployeeStatus::OnLeave, null],
                 ['EMP-008', 'Karim', 'Fathy', 'Engineering', 'QA Engineer', '2017-04-03', EmployeeStatus::Terminated, null],
+                // Joined mid-year: annual leave is prorated (6 of 12 months).
+                ['EMP-009', 'Salma', 'Mostafa', 'Engineering', 'Junior Developer', now()->startOfYear()->addMonths(6)->addDays(11)->toDateString(), EmployeeStatus::Active, null],
             ];
 
             $employees = [];
@@ -94,12 +96,12 @@ class DatabaseSeeder extends Seeder
                 ]);
             }
 
-            // Reporting lines: Ahmed (team leader) manages Mona and Karim; Youssef manages Nour.
-            foreach (['EMP-001' => 'EMP-002', 'EMP-008' => 'EMP-002', 'EMP-005' => 'EMP-006'] as $code => $managerCode) {
+            // Reporting lines: Ahmed (team leader) manages Mona, Karim and Salma; Youssef manages Nour.
+            foreach (['EMP-001' => 'EMP-002', 'EMP-008' => 'EMP-002', 'EMP-009' => 'EMP-002', 'EMP-005' => 'EMP-006'] as $code => $managerCode) {
                 $employees[$code]->update(['manager_id' => $employees[$managerCode]->id]);
             }
 
-            $annual = LeaveType::create(['name' => 'Annual Leave', 'days_per_year' => 21]);
+            $annual = LeaveType::create(['name' => 'Annual Leave', 'days_per_year' => 21, 'prorate_first_year' => true]);
             $sick = LeaveType::create(['name' => 'Sick Leave', 'days_per_year' => 15]);
             LeaveType::create(['name' => 'Unpaid Leave', 'days_per_year' => null]);
 

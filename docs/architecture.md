@@ -315,6 +315,7 @@ Subscription billing, multi-tenant on-prem, Octane, licensing/activation for on-
 - Team leaders: reporting lines (“reports to”, cycle-checked); team view; final approval of direct reports’ leave.
 - Employees: records with department and optional sign-in account; search, filters, pagination.
 - Leave: types with annual allowance; requests in working days (`HR_WEEKEND_DAYS`); overlap/balance checks; approve/reject/cancel; balances.
+  - Optional first-year proration per leave type (`prorate_first_year`): allowance × months left in the hire year ÷ 12, hire month counted when joined by the 15th, rounded to the nearest day. Leave cannot start before the hire date.
 - Dashboard: admin overview and employee self-service.
 
 ### Not built yet

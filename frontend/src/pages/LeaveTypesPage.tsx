@@ -62,7 +62,12 @@ export function LeaveTypesPage() {
               {types.map((t) => (
                 <tr key={t.id}>
                   <td className="strong">{t.name}</td>
-                  <td>{t.days_per_year === null ? 'Unlimited' : `${t.days_per_year} working days`}</td>
+                  <td>
+                    {t.days_per_year === null ? 'Unlimited' : `${t.days_per_year} working days`}
+                    {t.days_per_year !== null && t.prorate_first_year && (
+                      <div className="muted small">Prorated in the hire year</div>
+                    )}
+                  </td>
                   <td>{t.is_active ? <span className="badge badge-active">Active</span> : <span className="badge badge-cancelled">Inactive</span>}</td>
                   <td className="actions">
                     <button className="link" onClick={() => setEditing(t)}>
@@ -100,6 +105,7 @@ export function LeaveTypesPage() {
 function LeaveTypeForm({ type, onClose, onSaved }: { type: LeaveType | null; onClose: () => void; onSaved: () => void }) {
   const [name, setName] = useState(type?.name ?? '')
   const [days, setDays] = useState(type?.days_per_year?.toString() ?? '')
+  const [prorate, setProrate] = useState(type?.prorate_first_year ?? false)
   const [isActive, setIsActive] = useState(type?.is_active ?? true)
   const [errors, setErrors] = useState<ApiError | null>(null)
   const [general, setGeneral] = useState<string | null>(null)
@@ -110,7 +116,7 @@ function LeaveTypeForm({ type, onClose, onSaved }: { type: LeaveType | null; onC
     setSaving(true)
     setErrors(null)
     setGeneral(null)
-    const input = { name, days_per_year: days === '' ? null : Number(days), is_active: isActive }
+    const input = { name, days_per_year: days === '' ? null : Number(days), prorate_first_year: prorate, is_active: isActive }
     try {
       if (type) await api.leaveTypes.update(type.id, input)
       else await api.leaveTypes.create(input)
@@ -135,6 +141,18 @@ function LeaveTypeForm({ type, onClose, onSaved }: { type: LeaveType | null; onC
           <input type="number" min={1} max={365} value={days} onChange={(e) => setDays(e.target.value)} />
           <FieldError message={errors?.field('days_per_year')} />
         </label>
+        {days !== '' && (
+          <label className="checkbox">
+            <input type="checkbox" checked={prorate} onChange={(e) => setProrate(e.target.checked)} />
+            <span>
+              Prorate for new joiners
+              <span className="muted small" style={{ display: 'block' }}>
+                Employees hired during the year get a share for the months left (hire month counts if they joined by
+                the 15th). Example: 21 days, hired in July → 11 days that year.
+              </span>
+            </span>
+          </label>
+        )}
         <label className="checkbox">
           <input type="checkbox" checked={isActive} onChange={(e) => setIsActive(e.target.checked)} />
           Available for new requests

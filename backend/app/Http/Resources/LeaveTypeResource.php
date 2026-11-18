@@ -20,6 +20,7 @@ class LeaveTypeResource extends JsonResource
             'id' => $this->id,
             'name' => $this->name,
             'days_per_year' => $this->days_per_year,
+            'prorate_first_year' => $this->prorate_first_year,
             'is_active' => $this->is_active,
         ];
     }

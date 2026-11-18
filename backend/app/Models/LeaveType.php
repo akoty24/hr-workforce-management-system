@@ -11,20 +11,22 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * @property string $id
  * @property string $name
  * @property int|null $days_per_year null = unlimited
+ * @property bool $prorate_first_year allowance is prorated in the hire year
  * @property bool $is_active
  */
 class LeaveType extends Model
 {
     use BelongsToTenant, HasUuids;
 
-    protected $fillable = ['name', 'days_per_year', 'is_active'];
+    protected $fillable = ['name', 'days_per_year', 'prorate_first_year', 'is_active'];
 
-    protected $attributes = ['is_active' => true];
+    protected $attributes = ['is_active' => true, 'prorate_first_year' => false];
 
     protected function casts(): array
     {
         return [
             'days_per_year' => 'integer',
+            'prorate_first_year' => 'boolean',
             'is_active' => 'boolean',
         ];
     }
