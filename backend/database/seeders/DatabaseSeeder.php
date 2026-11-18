@@ -3,23 +3,45 @@
 namespace Database\Seeders;
 
 use App\Models\User;
-use Illuminate\Database\Console\Seeds\WithoutModelEvents;
+use App\Models\UserRole;
+use App\Tenancy\Actions\InstallTenant;
+use App\Tenancy\TenantContext;
 use Illuminate\Database\Seeder;
+use RuntimeException;
 
+/**
+ * Local demo data. Refuses to run in production.
+ *
+ * Note: model events must stay enabled (no WithoutModelEvents) — tenant_id
+ * is filled by the BelongsToTenant creating hook.
+ */
 class DatabaseSeeder extends Seeder
 {
-    use WithoutModelEvents;
+    public const DEMO_ADMIN_EMAIL = 'admin@demo.test';
 
-    /**
-     * Seed the application's database.
-     */
-    public function run(): void
+    public const DEMO_EMPLOYEE_EMAIL = 'employee@demo.test';
+
+    public const DEMO_PASSWORD = 'DemoPassword123';
+
+    public function run(InstallTenant $install, TenantContext $context): void
     {
-        // User::factory(10)->create();
+        if (app()->isProduction()) {
+            throw new RuntimeException('The demo seeder must not run in production.');
+        }
 
-        User::factory()->create([
-            'name' => 'Test User',
-            'email' => 'test@example.com',
-        ]);
+        ['tenant' => $tenant] = $install->handle(
+            'demo', 'Demo Company', 'Demo Admin', self::DEMO_ADMIN_EMAIL, self::DEMO_PASSWORD,
+        );
+
+        $context->run($tenant, function () {
+            User::create([
+                'name' => 'Demo Employee',
+                'email' => self::DEMO_EMPLOYEE_EMAIL,
+                'password' => self::DEMO_PASSWORD,
+                'role' => UserRole::Employee,
+            ]);
+        });
+
+        $this->command?->info('Demo tenant "demo" — admin: '.self::DEMO_ADMIN_EMAIL.' / employee: '.self::DEMO_EMPLOYEE_EMAIL.' — password: '.self::DEMO_PASSWORD);
     }
 }

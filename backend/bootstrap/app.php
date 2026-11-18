@@ -1,9 +1,11 @@
 <?php
 
+use App\Http\Middleware\AuthenticateTenantUser;
 use App\Http\Middleware\ResolveTenant;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
+use Illuminate\Http\Request;
 use Illuminate\Routing\Middleware\SubstituteBindings;
 use Illuminate\Support\Facades\Route;
 
@@ -15,20 +17,35 @@ return Application::configure(basePath: dirname(__DIR__))
         then: function () {
             // Health probes: no "web" middleware group (no session/cookies/CSRF).
             Route::group([], __DIR__.'/../routes/health.php');
+
+            // SPA JSON API: same-origin session auth (web group) for a resolved tenant.
+            Route::middleware(['web', 'tenant'])
+                ->prefix('api/v1')
+                ->name('api.v1.')
+                ->group(__DIR__.'/../routes/api.php');
         },
     )
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->alias([
             'tenant' => ResolveTenant::class,
+            'tenant.auth' => AuthenticateTenantUser::class,
         ]);
 
-        // Resolve the tenant before route-model binding, so bound
-        // tenant-scoped models are always filtered to the current tenant.
+        // Order: resolve tenant -> authenticate user of that tenant -> route-model
+        // binding. Bound tenant-scoped models are therefore always filtered to the
+        // current tenant, and loaded only for an authenticated user.
         $middleware->prependToPriorityList(
             before: SubstituteBindings::class,
             prepend: ResolveTenant::class,
         );
+        $middleware->prependToPriorityList(
+            before: SubstituteBindings::class,
+            prepend: AuthenticateTenantUser::class,
+        );
     })
     ->withExceptions(function (Exceptions $exceptions): void {
-        //
+        // The API always answers in JSON (errors included), never HTML or redirects.
+        $exceptions->shouldRenderJsonWhen(
+            fn (Request $request) => $request->is('api/*') || $request->expectsJson(),
+        );
     })->create();
