@@ -90,7 +90,8 @@ final class LeaveService
                     'full_allowance' => $type->days_per_year,
                     'approved' => $approved,
                     'pending' => $pending,
-                    'remaining' => $allowance === null ? null : max(0, $allowance - $approved - $pending),
+                    // Only approved leave reduces the balance; pending is shown separately.
+                    'remaining' => $allowance === null ? null : max(0, $allowance - $approved),
                 ];
             })
             ->values()
@@ -137,24 +138,7 @@ final class LeaveService
                 throw ValidationException::withMessages(['start_date' => 'This period overlaps another pending or approved leave request.']);
             }
 
-            $allowance = $this->allowance($employee, $type, $start->year);
-
-            if ($allowance !== null) {
-                $used = (int) LeaveRequest::query()
-                    ->where('employee_id', $employee->id)
-                    ->where('leave_type_id', $type->id)
-                    ->whereIn('status', LeaveStatus::blocking())
-                    ->whereYear('start_date', $start->year)
-                    ->sum('days');
-
-                $remaining = max(0, $allowance - $used);
-
-                if ($days > $remaining) {
-                    throw ValidationException::withMessages([
-                        'end_date' => "Not enough balance: {$days} working day(s) requested, {$remaining} remaining for {$type->name} in {$start->year}.",
-                    ]);
-                }
-            }
+            $this->ensureBalance($employee, $type, $start->year, $days, 'end_date');
 
             return LeaveRequest::create([
                 'employee_id' => $employee->id,
@@ -168,7 +152,59 @@ final class LeaveService
         });
     }
 
+    /**
+     * Record a decision. Approval re-checks the balance (only approved leave
+     * consumes it, so several pending requests may together exceed it); the
+     * employee row is locked so two approvals cannot overspend.
+     *
+     * @throws ValidationException
+     */
     public function decide(LeaveRequest $request, User $decider, LeaveStatus $status, ?string $note): LeaveRequest
+    {
+        if ($status !== LeaveStatus::Approved) {
+            return $this->record($request, $decider, $status, $note);
+        }
+
+        return DB::transaction(function () use ($request, $decider, $status, $note) {
+            Employee::query()->whereKey($request->employee_id)->lockForUpdate()->first();
+
+            $type = $request->leaveType()->firstOrFail();
+            $year = $request->start_date->year;
+
+            $this->ensureBalance($request->employee()->firstOrFail(), $type, $year, $request->days, 'status');
+
+            return $this->record($request, $decider, $status, $note);
+        });
+    }
+
+    /**
+     * @throws ValidationException
+     */
+    private function ensureBalance(Employee $employee, LeaveType $type, int $year, int $days, string $field): void
+    {
+        $allowance = $this->allowance($employee, $type, $year);
+
+        if ($allowance === null) {
+            return;
+        }
+
+        $approved = (int) LeaveRequest::query()
+            ->where('employee_id', $employee->id)
+            ->where('leave_type_id', $type->id)
+            ->where('status', LeaveStatus::Approved)
+            ->whereYear('start_date', $year)
+            ->sum('days');
+
+        $remaining = max(0, $allowance - $approved);
+
+        if ($days > $remaining) {
+            throw ValidationException::withMessages([
+                $field => "Not enough balance: {$days} working day(s) requested, {$remaining} remaining for {$type->name} in {$year}.",
+            ]);
+        }
+    }
+
+    private function record(LeaveRequest $request, User $decider, LeaveStatus $status, ?string $note): LeaveRequest
     {
         $request->update([
             'status' => $status,

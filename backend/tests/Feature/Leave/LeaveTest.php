@@ -109,8 +109,8 @@ class LeaveTest extends TestCase
         $this->postJson('/api/v1/leave-requests', $this->request(['start_date' => '2026-12-08', 'end_date' => '2026-12-09']))
             ->assertUnprocessable()->assertJsonValidationErrors(['start_date']);
 
-        // 3 used of 5; Sun 13 .. Wed 16 = 4 working days > 2 remaining.
-        $this->postJson('/api/v1/leave-requests', $this->request(['start_date' => '2026-12-13', 'end_date' => '2026-12-16']))
+        // Sun 13 .. Mon 21 = 7 working days > 5 allowance.
+        $this->postJson('/api/v1/leave-requests', $this->request(['start_date' => '2026-12-13', 'end_date' => '2026-12-21']))
             ->assertUnprocessable()->assertJsonValidationErrors(['end_date']);
 
         // Past start (non-admin).
@@ -128,6 +128,35 @@ class LeaveTest extends TestCase
         // End before start.
         $this->postJson('/api/v1/leave-requests', $this->request(['start_date' => '2026-12-20', 'end_date' => '2026-12-19']))
             ->assertUnprocessable()->assertJsonValidationErrors(['end_date']);
+    }
+
+    public function test_only_approved_leave_reduces_the_balance(): void
+    {
+        $this->actingAs($this->staffUser, 'web');
+
+        // Two pending requests of 3 days each: 6 > 5, but pending does not consume the balance.
+        $first = $this->postJson('/api/v1/leave-requests', $this->request())->assertCreated()->json('data.id');
+        $second = $this->postJson('/api/v1/leave-requests', $this->request(['start_date' => '2026-12-13', 'end_date' => '2026-12-15']))
+            ->assertCreated()->json('data.id');
+
+        $this->getJson('/api/v1/leave-balances')
+            ->assertJsonPath('data.0.pending', 6)
+            ->assertJsonPath('data.0.remaining', 5);
+
+        $this->actingAs($this->admin, 'web');
+        $this->postJson("/api/v1/leave-requests/{$first}/approve")->assertOk();
+
+        // Only 2 days left: approving the second (3 days) is refused and it stays pending.
+        $this->postJson("/api/v1/leave-requests/{$second}/approve")
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors('status');
+        $this->postJson("/api/v1/leave-requests/{$second}/reject")->assertOk();
+
+        $this->actingAs($this->staffUser, 'web');
+        $this->getJson('/api/v1/leave-balances')
+            ->assertJsonPath('data.0.approved', 3)
+            ->assertJsonPath('data.0.pending', 0)
+            ->assertJsonPath('data.0.remaining', 2);
     }
 
     public function test_cancelling_frees_the_balance(): void
