@@ -9,6 +9,7 @@ use App\Models\EmployeeStatus;
 use App\Models\Holiday;
 use App\Models\LeaveStatus;
 use App\Models\LeaveType;
+use App\Models\Salary;
 use App\Models\User;
 use App\Models\UserRole;
 use App\Tenancy\Actions\InstallTenant;
@@ -34,6 +35,12 @@ class DatabaseSeeder extends Seeder
     public const DEMO_HR_EMAIL = 'hr@demo.test';
 
     public const DEMO_PASSWORD = 'DemoPassword123';
+
+    /** Demo monthly salaries in EGP (the terminated employee has none). */
+    public const DEMO_SALARIES = [
+        'EMP-001' => 18000, 'EMP-002' => 32000, 'EMP-003' => 15000, 'EMP-004' => 14000,
+        'EMP-005' => 12000, 'EMP-006' => 28000, 'EMP-007' => 16000, 'EMP-009' => 9500,
+    ];
 
     public function run(InstallTenant $install, TenantContext $context, LeaveService $leave): void
     {
@@ -118,7 +125,15 @@ class DatabaseSeeder extends Seeder
 
             $annual = LeaveType::create(['name' => 'Annual Leave', 'days_per_year' => 21, 'prorate_first_year' => true]);
             $sick = LeaveType::create(['name' => 'Sick Leave', 'days_per_year' => 15]);
-            LeaveType::create(['name' => 'Unpaid Leave', 'days_per_year' => null]);
+            LeaveType::create(['name' => 'Unpaid Leave', 'days_per_year' => null, 'is_paid' => false]);
+
+            // Monthly salaries (EGP) so payroll has something to calculate.
+            foreach (self::DEMO_SALARIES as $code => $amount) {
+                Salary::create([
+                    'employee_id' => $employees[$code]->id, 'amount' => $amount, 'currency' => 'EGP',
+                    'effective_from' => now()->startOfYear()->toDateString(), 'note' => 'Demo salary',
+                ]);
+            }
 
             // A few requests around today so the dashboard has content.
             $today = CarbonImmutable::today();

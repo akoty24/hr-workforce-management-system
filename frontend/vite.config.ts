@@ -17,11 +17,16 @@ export default defineConfig(({ command }) => ({
 
   // Development: proxy API calls to Laravel so the browser sees one origin
   // (session cookies and CSRF work exactly as in production).
+  // changeOrigin: false keeps the browser's Host header (acme.localhost:5173),
+  // which is how Laravel picks the company in subdomain mode.
   server: {
+    // On Windows the native file watcher sometimes misses quick successive
+    // saves and keeps serving a stale module; polling is reliable there.
+    watch: process.platform === 'win32' ? { usePolling: true, interval: 300 } : undefined,
     proxy: {
-      '/api': backend,
-      '/health': backend,
-      '/up': backend,
+      '/api': { target: backend, changeOrigin: false },
+      '/health': { target: backend, changeOrigin: false },
+      '/up': { target: backend, changeOrigin: false },
     },
   },
 }))

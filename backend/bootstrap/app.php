@@ -1,7 +1,9 @@
 <?php
 
 use App\Http\Middleware\AuthenticateTenantUser;
+use App\Http\Middleware\EnsurePlatformHost;
 use App\Http\Middleware\ResolveTenant;
+use App\Http\Middleware\SetLocaleFromRequest;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
@@ -23,13 +25,23 @@ return Application::configure(basePath: dirname(__DIR__))
                 ->prefix('api/v1')
                 ->name('api.v1.')
                 ->group(__DIR__.'/../routes/api.php');
+
+            // Owner console API: only on the platform host, never with a tenant.
+            Route::middleware(['web', 'platform'])
+                ->prefix('api/platform')
+                ->name('api.platform.')
+                ->group(__DIR__.'/../routes/platform.php');
         },
     )
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->alias([
             'tenant' => ResolveTenant::class,
             'tenant.auth' => AuthenticateTenantUser::class,
+            'platform' => EnsurePlatformHost::class,
         ]);
+
+        // Messages in the SPA's interface language (Accept-Language: ar / en).
+        $middleware->web(append: [SetLocaleFromRequest::class]);
 
         // Order: resolve tenant -> authenticate user of that tenant -> route-model
         // binding. Bound tenant-scoped models are therefore always filtered to the

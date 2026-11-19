@@ -26,6 +26,10 @@ return [
     // must exist; otherwise resolution fails closed (404).
     'single_tenant' => env('TENANCY_SINGLE_TENANT'),
 
+    // Owner console (create / suspend companies). Served only on this host;
+    // defaults to "admin.{base_domain}" in subdomain mode, disabled otherwise.
+    'platform_host' => env('TENANCY_PLATFORM_HOST'),
+
     // Slugs that can never be tenants (they are, or may become, platform hosts).
     'reserved_slugs' => [
         'admin', 'api', 'app', 'assets', 'auth', 'billing', 'cdn', 'dashboard',

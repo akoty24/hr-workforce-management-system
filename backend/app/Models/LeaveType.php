@@ -18,14 +18,15 @@ class LeaveType extends Model
 {
     use BelongsToTenant, HasUuids;
 
-    protected $fillable = ['name', 'days_per_year', 'prorate_first_year', 'is_active'];
+    protected $fillable = ['name', 'days_per_year', 'prorate_first_year', 'is_paid', 'is_active'];
 
-    protected $attributes = ['is_active' => true, 'prorate_first_year' => false];
+    protected $attributes = ['is_active' => true, 'prorate_first_year' => false, 'is_paid' => true];
 
     protected function casts(): array
     {
         return [
             'days_per_year' => 'integer',
+            'is_paid' => 'boolean',
             'prorate_first_year' => 'boolean',
             'is_active' => 'boolean',
         ];

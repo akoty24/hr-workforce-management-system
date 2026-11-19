@@ -29,6 +29,16 @@ class SettingsController
             'work_end' => ['required', 'date_format:H:i', 'after:work_start'],
             'grace_minutes' => ['required', 'integer', 'min:0', 'max:240'],
             'require_location' => ['required', 'boolean'],
+            // Payroll options (optional so older clients keep working).
+            'payroll_day_divisor' => ['sometimes', 'integer', 'min:20', 'max:31'],
+            'deduct_absence' => ['sometimes', 'boolean'],
+            'late_multiplier' => ['sometimes', 'numeric', 'min:0', 'max:10'],
+            'overtime_multiplier' => ['sometimes', 'numeric', 'min:0', 'max:10'],
+            'social_insurance_enabled' => ['sometimes', 'boolean'],
+            'social_insurance_rate' => ['sometimes', 'numeric', 'min:0', 'max:50'],
+            'insurable_min' => ['sometimes', 'numeric', 'min:0'],
+            'insurable_max' => ['sometimes', 'numeric', 'gte:insurable_min'],
+            'income_tax_enabled' => ['sometimes', 'boolean'],
         ]);
 
         $this->settings->update($data);

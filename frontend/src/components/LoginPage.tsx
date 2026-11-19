@@ -1,13 +1,18 @@
 import { useState, type FormEvent } from 'react'
 import { ApiError, api } from '../api'
 import type { Tenant, User } from '../types'
+import { Link } from '../router'
+import { LanguageSwitch } from './ui'
+import { tr } from '../i18n'
 
 interface Props {
   tenant: Tenant
   onLogin: (user: User) => void
+  /** Shown above the form, e.g. after a password reset. */
+  notice?: string | null
 }
 
-export function LoginPage({ tenant, onLogin }: Props) {
+export function LoginPage({ tenant, onLogin, notice }: Props) {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState<string | null>(null)
@@ -24,7 +29,7 @@ export function LoginPage({ tenant, onLogin }: Props) {
       if (e instanceof ApiError) {
         setError(e.field('email') ?? e.field('password') ?? e.message)
       } else {
-        setError('Cannot reach the server.')
+        setError(tr("Cannot reach the server."))
       }
     } finally {
       setSubmitting(false)
@@ -33,19 +38,26 @@ export function LoginPage({ tenant, onLogin }: Props) {
 
   return (
     <div className="center">
+      <LanguageSwitch className="lang-floating" />
       <form className="card narrow" onSubmit={submit} noValidate>
         <div className="login-head">
           <span className="logo" aria-hidden>
-            HR
+            {tr("HR")}
           </span>
           <div>
-            <h1>Sign in</h1>
+            <h1>{tr("Sign in")}</h1>
             <p className="muted">{tenant.name}</p>
           </div>
         </div>
 
+        {notice && (
+          <p className="success" role="status">
+            {tr(notice)}
+          </p>
+        )}
+
         <label>
-          Email
+          {tr("Email")}
           <input
             type="email"
             autoComplete="username"
@@ -57,7 +69,12 @@ export function LoginPage({ tenant, onLogin }: Props) {
         </label>
 
         <label>
-          Password
+          <span className="label-row">
+            {tr("Password")}
+            <Link to="/forgot-password" className="small">
+              {tr("Forgot password?")}
+            </Link>
+          </span>
           <input
             type="password"
             autoComplete="current-password"
@@ -69,30 +86,23 @@ export function LoginPage({ tenant, onLogin }: Props) {
 
         {error && (
           <p className="error" role="alert">
-            {error}
+            {tr(error)}
           </p>
         )}
 
         <button type="submit" disabled={submitting || !email || !password}>
-          {submitting ? 'Signing in…' : 'Sign in'}
+          {submitting ? tr("Signing in…") : tr("Sign in")}
         </button>
 
-        {import.meta.env.DEV && (
+        {import.meta.env.DEV && tenant.demo_accounts && tenant.demo_accounts.length > 0 && (
           <div className="hint small">
-            <strong>Local demo accounts</strong> (password <code>DemoPassword123</code>)
+            <strong>{tr("Local demo accounts")}</strong> {tr("(password")}{' '}<code>{tr("DemoPassword123")}</code>)
             <div className="hint-buttons">
-              <button type="button" className="link" onClick={() => setEmail('admin@demo.test')}>
-                admin@demo.test
-              </button>
-              <button type="button" className="link" onClick={() => setEmail('hr@demo.test')}>
-                hr@demo.test
-              </button>
-              <button type="button" className="link" onClick={() => setEmail('leader@demo.test')}>
-                leader@demo.test
-              </button>
-              <button type="button" className="link" onClick={() => setEmail('employee@demo.test')}>
-                employee@demo.test
-              </button>
+              {tenant.demo_accounts.map((account) => (
+                <button key={account} type="button" className="link" onClick={() => setEmail(account)}>
+                  {account}
+                </button>
+              ))}
             </div>
           </div>
         )}

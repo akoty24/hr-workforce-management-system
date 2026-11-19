@@ -6,17 +6,31 @@ use App\Http\Requests\EmployeeRequest;
 use App\Http\Resources\EmployeeResource;
 use App\Models\Employee;
 use App\Models\EmployeeStatus;
+use App\Models\Attendance;
+use App\Models\EmployeeDocument;
+use App\Models\Payslip;
+use App\Models\Salary;
+use App\Models\ShortLeave;
 use App\Models\User;
+use App\Tenancy\DefaultPassword;
+use App\Tenancy\TenantContext;
+use App\Tenancy\TenantFileStorage;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 use Illuminate\Http\Response;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Validation\Rule;
 
 class EmployeeController
 {
     private const RELATIONS = ['department', 'user', 'manager'];
+
+    public function __construct(
+        private readonly TenantContext $context,
+        private readonly TenantFileStorage $files,
+    ) {}
 
     public function index(Request $request): AnonymousResourceCollection
     {
@@ -49,7 +63,12 @@ class EmployeeController
 
     public function store(EmployeeRequest $request): EmployeeResource
     {
-        $employee = Employee::create($request->validated());
+        $employee = DB::transaction(function () use ($request) {
+            $employee = Employee::create($request->safe()->except(['account', 'new_password']));
+            $this->createAccount($employee, $request);
+
+            return $employee;
+        });
 
         return new EmployeeResource($employee->load(self::RELATIONS));
     }
@@ -63,7 +82,14 @@ class EmployeeController
 
     public function update(EmployeeRequest $request, Employee $employee): EmployeeResource
     {
-        $employee->update($request->validated());
+        DB::transaction(function () use ($request, $employee) {
+            $employee->update($request->safe()->except(['account', 'new_password']));
+            $this->createAccount($employee, $request);
+
+            if ($request->filled('new_password')) {
+                $employee->user->update(['password' => $request->validated('new_password'), 'must_change_password' => true]);
+            }
+        });
 
         return new EmployeeResource($employee->load(self::RELATIONS));
     }
@@ -84,8 +110,49 @@ class EmployeeController
             ], 409);
         }
 
-        $employee->delete();
+        // Any other HR history (attendance, permissions, salaries, payslips) is kept too.
+        $hasHistory = ShortLeave::query()->where('employee_id', $employee->id)->exists()
+            || Attendance::query()->where('employee_id', $employee->id)->exists()
+            || Salary::query()->where('employee_id', $employee->id)->exists()
+            || Payslip::query()->where('employee_id', $employee->id)->exists();
+        if ($hasHistory) {
+            return response()->json([
+                'message' => 'This employee has attendance, salary or payroll history and cannot be deleted. Set the status to "terminated" instead.',
+            ], 409);
+        }
+
+        // Documents go with the record (files included).
+        DB::transaction(function () use ($employee) {
+            foreach (EmployeeDocument::query()->where('employee_id', $employee->id)->get() as $document) {
+                $this->files->delete($document->path);
+                $document->delete();
+            }
+            $employee->delete();
+        });
 
         return response()->noContent();
+    }
+
+    /** Create and link a sign-in account when the form asked for one. */
+    private function createAccount(Employee $employee, EmployeeRequest $request): void
+    {
+        $account = $request->account();
+
+        if (! $account) {
+            return;
+        }
+
+        // Empty password = the company default; either way the employee
+        // chooses their own at first sign-in.
+        $user = User::create([
+            'name' => $employee->full_name,
+            'email' => $employee->email,
+            'role' => $account['role'],
+            'password' => filled($account['password'] ?? null) ? $account['password'] : DefaultPassword::for($this->context->current()),
+            'is_active' => true,
+            'must_change_password' => true,
+        ]);
+
+        $employee->update(['user_id' => $user->id]);
     }
 }

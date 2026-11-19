@@ -39,8 +39,19 @@ class AuthenticateTenantUser
             return $this->unauthenticated();
         }
 
+        // A password someone else chose (e.g. the company default) must be
+        // replaced before anything else: only "who am I", sign out and change it.
+        if ($user->getAttribute('must_change_password') && ! $request->routeIs(...self::ALLOWED_BEFORE_PASSWORD_CHANGE)) {
+            return response()->json([
+                'message' => 'Choose your own password before continuing.',
+                'code' => 'password_change_required',
+            ], 403);
+        }
+
         return $next($request);
     }
+
+    private const ALLOWED_BEFORE_PASSWORD_CHANGE = ['api.v1.auth.me', 'api.v1.auth.logout', 'api.v1.account.password'];
 
     private function unauthenticated(): Response
     {

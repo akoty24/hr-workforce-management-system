@@ -5,11 +5,14 @@ use App\Http\Controllers\Api\AttendanceController;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\DashboardController;
 use App\Http\Controllers\Api\DepartmentController;
+use App\Http\Controllers\Api\DocumentController;
 use App\Http\Controllers\Api\EmployeeController;
 use App\Http\Controllers\Api\HolidayController;
 use App\Http\Controllers\Api\LeaveBalanceController;
 use App\Http\Controllers\Api\LeaveRequestController;
 use App\Http\Controllers\Api\LeaveTypeController;
+use App\Http\Controllers\Api\PasswordResetController;
+use App\Http\Controllers\Api\PayrollController;
 use App\Http\Controllers\Api\ReportController;
 use App\Http\Controllers\Api\SalaryController;
 use App\Http\Controllers\Api\SettingsController;
@@ -28,6 +31,8 @@ use Illuminate\Support\Facades\Route;
 Route::get('/tenant', [AuthController::class, 'tenant'])->name('tenant.show');
 
 Route::post('/auth/login', [AuthController::class, 'login'])->name('auth.login');
+Route::post('/auth/forgot-password', [PasswordResetController::class, 'forgot'])->name('auth.password.forgot');
+Route::post('/auth/reset-password', [PasswordResetController::class, 'reset'])->name('auth.password.reset');
 
 Route::middleware('tenant.auth')->group(function () {
     Route::post('/auth/logout', [AuthController::class, 'logout'])->name('auth.logout');
@@ -65,6 +70,24 @@ Route::middleware('tenant.auth')->group(function () {
     Route::get('/settings', [SettingsController::class, 'show'])->name('settings.show');
     Route::put('/settings', [SettingsController::class, 'update'])->name('settings.update');
     Route::get('/reports/{type}', ReportController::class)->name('reports.show');
+
+    // Payroll (admins and HR) and the employee's own payslips.
+    Route::get('/payroll-runs', [PayrollController::class, 'index'])->name('payroll.index');
+    Route::post('/payroll-runs', [PayrollController::class, 'store'])->name('payroll.store');
+    Route::get('/payroll-runs/{payrollRun}', [PayrollController::class, 'show'])->name('payroll.show');
+    Route::post('/payroll-runs/{payrollRun}/recalculate', [PayrollController::class, 'recalculate'])->name('payroll.recalculate');
+    Route::post('/payroll-runs/{payrollRun}/finalize', [PayrollController::class, 'finalize'])->name('payroll.finalize');
+    Route::get('/payroll-runs/{payrollRun}/export', [PayrollController::class, 'export'])->name('payroll.export');
+    Route::delete('/payroll-runs/{payrollRun}', [PayrollController::class, 'destroy'])->name('payroll.destroy');
+    Route::put('/payslips/{payslip}', [PayrollController::class, 'updatePayslip'])->name('payslips.update');
+    Route::get('/my/payslips', [PayrollController::class, 'mine'])->name('payslips.mine');
+
+    // Employee documents.
+    Route::get('/employees/{employee}/documents', [DocumentController::class, 'index'])->name('documents.index');
+    Route::post('/employees/{employee}/documents', [DocumentController::class, 'store'])->name('documents.store');
+    Route::get('/documents/expiring', [DocumentController::class, 'expiring'])->name('documents.expiring');
+    Route::get('/documents/{document}/download', [DocumentController::class, 'download'])->name('documents.download');
+    Route::delete('/documents/{document}', [DocumentController::class, 'destroy'])->name('documents.destroy');
 
     // Hourly permissions.
     // Explicit name: Laravel would singularise "leaves" to {short_leaf}.

@@ -5,7 +5,6 @@ namespace App\Tenancy\Actions;
 use App\Models\Tenant;
 use App\Tenancy\TenantSlug;
 use App\Tenancy\TenantStatus;
-use Closure;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\ValidationException;
 
@@ -23,17 +22,10 @@ final class CreateTenant
         $data = Validator::make(
             ['slug' => strtolower(trim($slug)), 'name' => trim($name)],
             [
-                'slug' => [
-                    'required', 'string', 'regex:'.TenantSlug::PATTERN, 'unique:tenants,slug',
-                    function (string $attribute, mixed $value, Closure $fail): void {
-                        if (TenantSlug::isReserved($value)) {
-                            $fail('This slug is reserved.');
-                        }
-                    },
-                ],
+                'slug' => TenantSlug::rules(),
                 'name' => ['required', 'string', 'max:255'],
             ],
-            ['slug.regex' => 'The slug must be 3–63 characters: lowercase letters, digits and single hyphens, starting and ending with a letter or digit.'],
+            TenantSlug::messages(),
         )->validate();
 
         return Tenant::create([

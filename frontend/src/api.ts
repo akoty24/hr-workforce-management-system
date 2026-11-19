@@ -2,6 +2,11 @@ import type {
   AttendanceRecord,
   AttendanceToday,
   CompanySettings,
+  EmployeeDocument,
+  PayrollRun,
+  PayrollRunDetail,
+  Payslip,
+  PayslipItem,
   Report,
   ReportType,
   SalaryEntry,
@@ -20,12 +25,16 @@ import type {
   LeaveType,
   LeaveTypeInput,
   Paginated,
+  PlatformOwner,
+  PlatformTenant,
+  PlatformTenantInput,
   ShortLeave,
   ShortLeaveInput,
   Tenant,
   User,
   UserInput,
 } from './types'
+import { lang } from './i18n'
 
 /** Error returned by the API, with Laravel validation errors when present. */
 export class ApiError extends Error {
@@ -68,6 +77,8 @@ async function request<T>(method: string, path: string, body?: unknown, retried 
   const headers: Record<string, string> = {
     Accept: 'application/json',
     'X-Requested-With': 'XMLHttpRequest',
+    // Server validation messages in the interface language.
+    'Accept-Language': lang(),
   }
   if (body !== undefined) headers['Content-Type'] = 'application/json'
 
@@ -75,7 +86,9 @@ async function request<T>(method: string, path: string, body?: unknown, retried 
   const token = xsrfToken()
   if (token) headers['X-XSRF-TOKEN'] = token
 
-  const response = await fetch(`/api/v1${path}`, {
+  // Paths are relative to /api/v1 unless they name another API (the owner console).
+  const platform = path.startsWith('/api/platform')
+  const response = await fetch(platform ? path : `/api/v1${path}`, {
     method,
     headers,
     credentials: 'same-origin',
@@ -84,7 +97,7 @@ async function request<T>(method: string, path: string, body?: unknown, retried 
 
   // 419 = CSRF token expired/missing: refresh the cookie once and retry.
   if (response.status === 419 && !retried) {
-    await fetch('/api/v1/tenant', { credentials: 'same-origin', headers: { Accept: 'application/json' } })
+    await fetch(platform ? '/api/platform/me' : '/api/v1/tenant', { credentials: 'same-origin', headers: { Accept: 'application/json' } })
     return request<T>(method, path, body, true)
   }
 
@@ -93,7 +106,7 @@ async function request<T>(method: string, path: string, body?: unknown, retried 
   const data = await response.json().catch(() => ({}))
 
   if (!response.ok) {
-    if (response.status === 401 && !path.startsWith('/auth/')) onUnauthenticated?.()
+    if (response.status === 401 && !platform && !path.startsWith('/auth/')) onUnauthenticated?.()
     throw new ApiError(response.status, data.message ?? `Request failed (${response.status})`, data.errors)
   }
 
@@ -102,12 +115,49 @@ async function request<T>(method: string, path: string, body?: unknown, retried 
 
 const data = <T>(promise: Promise<{ data: T }>) => promise.then((r) => r.data)
 
+/** Multipart upload (files): same CSRF and error handling as request(). */
+async function upload<T>(path: string, form: FormData): Promise<T> {
+  const headers: Record<string, string> = { Accept: 'application/json', 'X-Requested-With': 'XMLHttpRequest', 'Accept-Language': lang() }
+  const token = xsrfToken()
+  if (token) headers['X-XSRF-TOKEN'] = token
+
+  const response = await fetch(`/api/v1${path}`, { method: 'POST', headers, credentials: 'same-origin', body: form })
+  const body = await response.json().catch(() => ({}))
+  if (!response.ok) {
+    if (response.status === 401) onUnauthenticated?.()
+    throw new ApiError(response.status, body.message ?? `Request failed (${response.status})`, body.errors)
+  }
+  return body as T
+}
+
 export const api = {
   tenant: () => data(request<{ data: Tenant }>('GET', '/tenant')),
+
+  /** Owner console (only answers on the platform host, e.g. admin.localhost). */
+  platform: {
+    me: () => data(request<{ data: PlatformOwner }>('GET', '/api/platform/me')),
+    login: (email: string, password: string) =>
+      data(request<{ data: PlatformOwner }>('POST', '/api/platform/login', { email, password })),
+    logout: () => request<void>('POST', '/api/platform/logout'),
+    changePassword: (current_password: string, password: string, password_confirmation: string) =>
+      request<void>('PUT', '/api/platform/password', { current_password, password, password_confirmation }),
+    tenants: () => data(request<{ data: PlatformTenant[] }>('GET', '/api/platform/tenants')),
+    createTenant: (input: PlatformTenantInput) =>
+      data(request<{ data: PlatformTenant & { admin_email: string; admin_password: string | null } }>('POST', '/api/platform/tenants', input)),
+    updateTenant: (id: string, input: { name?: string; slug?: string; status?: 'active' | 'suspended' }) =>
+      data(request<{ data: PlatformTenant }>('PATCH', `/api/platform/tenants/${id}`, input)),
+    admins: (tenantId: string) =>
+      data(request<{ data: { id: string; name: string; email: string; is_active: boolean }[] }>('GET', `/api/platform/tenants/${tenantId}/admins`)),
+    resetAdminPassword: (tenantId: string, userId: string) =>
+      data(request<{ data: { password: string | null } }>('PUT', `/api/platform/tenants/${tenantId}/admins/${userId}/password`, {})),
+  },
 
   me: () => data(request<{ data: User }>('GET', '/auth/me')),
   login: (email: string, password: string) => data(request<{ data: User }>('POST', '/auth/login', { email, password })),
   logout: () => request<void>('POST', '/auth/logout'),
+  forgotPassword: (email: string) => request<{ message: string }>('POST', '/auth/forgot-password', { email }),
+  resetPassword: (input: { token: string; email: string; password: string; password_confirmation: string }) =>
+    request<{ message: string }>('POST', '/auth/reset-password', input),
   changePassword: (current_password: string, password: string, password_confirmation: string) =>
     request<void>('PUT', '/account/password', { current_password, password, password_confirmation }),
 
@@ -158,6 +208,27 @@ export const api = {
   settings: {
     get: () => data(request<{ data: CompanySettings }>('GET', '/settings')),
     update: (input: CompanySettings) => data(request<{ data: CompanySettings }>('PUT', '/settings', input)),
+  },
+
+  payroll: {
+    list: () => data(request<{ data: PayrollRun[] }>('GET', '/payroll-runs')),
+    create: (year: number, month: number) => data(request<{ data: PayrollRunDetail }>('POST', '/payroll-runs', { year, month })),
+    get: (id: string) => data(request<{ data: PayrollRunDetail }>('GET', `/payroll-runs/${id}`)),
+    recalculate: (id: string) => data(request<{ data: PayrollRunDetail }>('POST', `/payroll-runs/${id}/recalculate`)),
+    finalize: (id: string) => data(request<{ data: PayrollRunDetail }>('POST', `/payroll-runs/${id}/finalize`)),
+    remove: (id: string) => request<void>('DELETE', `/payroll-runs/${id}`),
+    updatePayslip: (id: string, items: PayslipItem[]) => data(request<{ data: Payslip }>('PUT', `/payslips/${id}`, { items })),
+    exportUrl: (id: string) => `/api/v1/payroll-runs/${id}/export`,
+    mine: () => data(request<{ data: Payslip[] }>('GET', '/my/payslips')),
+  },
+
+  documents: {
+    list: (employeeId: string) => data(request<{ data: EmployeeDocument[] }>('GET', `/employees/${employeeId}/documents`)),
+    upload: (employeeId: string, form: FormData) =>
+      data(upload<{ data: EmployeeDocument }>(`/employees/${employeeId}/documents`, form)),
+    remove: (id: string) => request<void>('DELETE', `/documents/${id}`),
+    expiring: () => data(request<{ data: EmployeeDocument[] }>('GET', '/documents/expiring')),
+    downloadUrl: (id: string) => `/api/v1/documents/${id}/download`,
   },
 
   reports: {

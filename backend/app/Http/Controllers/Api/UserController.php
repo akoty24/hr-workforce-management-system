@@ -25,7 +25,10 @@ class UserController
 
     public function store(UserRequest $request): UserResource
     {
-        $user = User::create($request->safe()->only(['name', 'email', 'role', 'password', 'is_active']));
+        // The admin chose this password, so the user replaces it at first sign-in.
+        $user = User::create($request->safe()->only(['name', 'email', 'role', 'password', 'is_active']) + [
+            'must_change_password' => true,
+        ]);
 
         return new UserResource($user->load('employee'));
     }
@@ -36,6 +39,8 @@ class UserController
 
         if ($request->filled('password')) {
             $data['password'] = $request->validated('password');
+            // Resetting someone else's password: they must choose their own next time.
+            $data['must_change_password'] = $user->id !== $request->user()->id;
         }
 
         $user->update($data);

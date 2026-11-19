@@ -3,6 +3,9 @@ import { ApiError, api, errorMessage } from '../api'
 import { ROLE_LABELS, type User } from '../types'
 import { ErrorText, FieldError, PageHead } from '../components/ui'
 import { SalaryPanel } from '../components/SalaryPanel'
+import { DocumentsPanel } from '../components/DocumentsPanel'
+import { MyPayslips } from '../components/MyPayslips'
+import { tr } from '../i18n'
 
 export function AccountPage({ user }: { user: User }) {
   const [current, setCurrent] = useState('')
@@ -35,53 +38,65 @@ export function AccountPage({ user }: { user: User }) {
 
   return (
     <section>
-      <PageHead title="My account" />
+      <PageHead title={tr("My account")} />
       <div className="grid-2">
         <div className="card">
-          <h2>Profile</h2>
+          <h2>{tr("Profile")}</h2>
           <dl className="details">
-            <dt>Name</dt>
+            <dt>{tr("Name")}</dt>
             <dd>{user.name}</dd>
-            <dt>Email</dt>
+            <dt>{tr("Email")}</dt>
             <dd>{user.email}</dd>
-            <dt>Role</dt>
+            <dt>{tr("Role")}</dt>
             <dd>
-              <span className={`role role-${user.role}`}>{ROLE_LABELS[user.role]}</span>
+              <span className={`role role-${user.role}`}>{tr(ROLE_LABELS[user.role])}</span>
             </dd>
-            <dt>Employee record</dt>
+            <dt>{tr("Employee record")}</dt>
             <dd>{user.employee?.full_name ?? '—'}</dd>
           </dl>
         </div>
 
         <form className="card form" onSubmit={submit} noValidate>
-          <h2>Change password</h2>
+          <h2>{tr("Change password")}</h2>
           <label>
-            Current password
+            {tr("Current password")}
             <input type="password" autoComplete="current-password" value={current} onChange={(e) => setCurrent(e.target.value)} />
             <FieldError message={errors?.field('current_password')} />
           </label>
           <label>
-            New password <span className="muted small">(min. 12 characters, letters and numbers)</span>
+            {tr("New password")}{' '}<span className="muted small">{tr("(min. 12 characters, letters and numbers)")}</span>
             <input type="password" autoComplete="new-password" value={password} onChange={(e) => setPassword(e.target.value)} />
             <FieldError message={errors?.field('password')} />
           </label>
           <label>
-            Confirm new password
+            {tr("Confirm new password")}
             <input type="password" autoComplete="new-password" value={confirmation} onChange={(e) => setConfirmation(e.target.value)} />
           </label>
           <ErrorText message={general} />
-          {saved && <p className="success">Password changed. Other devices have been signed out.</p>}
+          {saved && <p className="success">{tr("Password changed. Other devices have been signed out.")}</p>}
           <div className="form-actions">
             <button type="submit" disabled={saving || !current || !password}>
-              {saving ? 'Saving…' : 'Change password'}
+              {saving ? tr("Saving…") : tr("Change password")}
             </button>
           </div>
         </form>
       </div>
       {user.employee && (
         <div className="card section-top">
-          <h2>My salary</h2>
+          <h2>{tr("My salary")}</h2>
           <SalaryPanel employeeId={user.employee.id} canEdit={false} />
+        </div>
+      )}
+      {user.employee && (
+        <div className="card section-top">
+          <h2>{tr("My payslips")}</h2>
+          <MyPayslips />
+        </div>
+      )}
+      {user.employee && (
+        <div className="card section-top">
+          <h2>{tr("My documents")}</h2>
+          <DocumentsPanel employeeId={user.employee.id} canEdit={false} />
         </div>
       )}
     </section>

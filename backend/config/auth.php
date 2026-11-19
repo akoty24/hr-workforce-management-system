@@ -42,6 +42,12 @@ return [
             'driver' => 'session',
             'provider' => 'users',
         ],
+
+        // Owner console (system owner, not a company user).
+        'platform' => [
+            'driver' => 'session',
+            'provider' => 'platform_admins',
+        ],
     ],
 
     /*
@@ -65,6 +71,11 @@ return [
         'users' => [
             'driver' => 'eloquent',
             'model' => env('AUTH_MODEL', User::class),
+        ],
+
+        'platform_admins' => [
+            'driver' => 'eloquent',
+            'model' => App\Models\PlatformAdmin::class,
         ],
 
         // 'users' => [

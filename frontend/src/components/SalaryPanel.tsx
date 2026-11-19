@@ -3,6 +3,7 @@ import { ApiError, api, errorMessage } from '../api'
 import type { SalaryHistory } from '../types'
 import { ErrorText, FieldError } from './ui'
 import { formatDate, formatMoney, localToday } from '../format'
+import { tr } from '../i18n'
 
 /** Salary history of one employee; HR/admin may add and delete entries. */
 export function SalaryPanel({ employeeId, canEdit }: { employeeId: string; canEdit: boolean }) {
@@ -57,7 +58,7 @@ export function SalaryPanel({ employeeId, canEdit }: { employeeId: string; canEd
   }
 
   async function remove(id: string) {
-    if (!window.confirm('Delete this salary entry?')) return
+    if (!window.confirm(tr("Delete this salary entry?"))) return
     try {
       await api.salaries.remove(id)
       await load()
@@ -69,12 +70,12 @@ export function SalaryPanel({ employeeId, canEdit }: { employeeId: string; canEd
   return (
     <div className="form">
       <ErrorText message={error} />
-      {data === null && !error && <p className="muted">Loading…</p>}
+      {data === null && !error && <p className="muted">{tr("Loading…")}</p>}
       {data && (
         <div className="summary">
-          <div className="muted small">Current salary</div>
+          <div className="muted small">{tr("Current salary")}</div>
           <div className="stat-value">{data.current ? formatMoney(data.current.amount, data.current.currency) : '—'}</div>
-          {data.current && <div className="muted small">since {formatDate(data.current.effective_from)}</div>}
+          {data.current && <div className="muted small">{tr("since")}{' '}{formatDate(data.current.effective_from)}</div>}
         </div>
       )}
 
@@ -82,10 +83,10 @@ export function SalaryPanel({ employeeId, canEdit }: { employeeId: string; canEd
         <table className="compact">
           <thead>
             <tr>
-              <th>Effective from</th>
-              <th>Amount</th>
-              <th>Note</th>
-              {canEdit && <th aria-label="Actions" />}
+              <th>{tr("Effective from")}</th>
+              <th>{tr("Amount")}</th>
+              <th>{tr("Note")}</th>
+              {canEdit && <th aria-label={tr("Actions")} />}
             </tr>
           </thead>
           <tbody>
@@ -95,12 +96,12 @@ export function SalaryPanel({ employeeId, canEdit }: { employeeId: string; canEd
                 <td className="strong">{formatMoney(s.amount, s.currency)}</td>
                 <td className="muted small">
                   {s.note}
-                  {s.created_by && <div>by {s.created_by}</div>}
+                  {s.created_by && <div>{tr("by")}{' '}{s.created_by}</div>}
                 </td>
                 {canEdit && (
                   <td className="actions">
                     <button className="link danger" onClick={() => remove(s.id)}>
-                      Delete
+                      {tr("Delete")}
                     </button>
                   </td>
                 )}
@@ -112,31 +113,31 @@ export function SalaryPanel({ employeeId, canEdit }: { employeeId: string; canEd
 
       {canEdit && (
         <form className="form" onSubmit={add} noValidate>
-          <h3>New salary / raise</h3>
+          <h3>{tr("New salary / raise")}</h3>
           <div className="form-grid">
             <label>
-              Monthly amount
+              {tr("Monthly amount")}
               <input type="number" min={0} step="0.01" value={amount} onChange={(e) => setAmount(e.target.value)} />
               <FieldError message={errors?.field('amount')} />
             </label>
             <label>
-              Currency
+              {tr("Currency")}
               <input value={currency} maxLength={3} onChange={(e) => setCurrency(e.target.value.toUpperCase())} />
               <FieldError message={errors?.field('currency')} />
             </label>
             <label>
-              Effective from
+              {tr("Effective from")}
               <input type="date" value={effective} onChange={(e) => setEffective(e.target.value)} />
               <FieldError message={errors?.field('effective_from')} />
             </label>
             <label>
-              Note <span className="muted small">(optional)</span>
-              <input value={note} maxLength={500} onChange={(e) => setNote(e.target.value)} placeholder="e.g. Annual raise" />
+              {tr("Note")}{' '}<span className="muted small">{tr("(optional)")}</span>
+              <input value={note} maxLength={500} onChange={(e) => setNote(e.target.value)} placeholder={tr("e.g. Annual raise")} />
             </label>
           </div>
           <div className="form-actions">
             <button type="submit" disabled={saving || amount === ''}>
-              {saving ? 'Saving…' : 'Add salary'}
+              {saving ? tr("Saving…") : tr("Add salary")}
             </button>
           </div>
         </form>

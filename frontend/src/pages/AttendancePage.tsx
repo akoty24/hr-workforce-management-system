@@ -1,8 +1,10 @@
 import { useCallback, useEffect, useState, type FormEvent } from 'react'
 import { ApiError, api, errorMessage } from '../api'
 import { managesHr, type AttendanceRecord, type AttendanceToday, type Employee, type GeoPoint, type User } from '../types'
-import { ErrorText, FieldError, Modal, PageHead } from '../components/ui'
+import { Icon } from '../components/icons'
+import { ErrorText, FieldError, Modal, PageHead, Person } from '../components/ui'
 import { formatDate, formatDuration, formatTime, localToday } from '../format'
+import { tr } from '../i18n'
 
 /** Browser location, or null when unavailable/denied (the server decides if it is required). */
 function currentPosition(): Promise<{ latitude: number; longitude: number; accuracy: number } | null> {
@@ -57,10 +59,10 @@ export function AttendancePage({ user }: { user: User }) {
   }, [from, to, user.employee])
 
   async function punch(action: 'in' | 'out') {
-    setBusy('Getting your location…')
+    setBusy(tr("Getting your location…"))
     setError(null)
     const position = await currentPosition()
-    setBusy(action === 'in' ? 'Checking in…' : 'Checking out…')
+    setBusy(action === 'in' ? tr("Checking in…") : tr("Checking out…"))
     try {
       if (action === 'in') await api.attendance.checkIn(position ?? {})
       else await api.attendance.checkOut(position ?? {})
@@ -80,41 +82,41 @@ export function AttendancePage({ user }: { user: User }) {
   return (
     <section>
       <PageHead
-        title="Attendance"
-        subtitle={today ? `Working hours ${formatTime(today.schedule.work_start)} – ${formatTime(today.schedule.work_end)}, ${today.schedule.grace_minutes} minutes grace.` : undefined}
-        actions={canManage && <button className="secondary" onClick={() => setEditing('new')}>+ Add a record</button>}
+        title={tr("Attendance")}
+        subtitle={today ? tr("Working hours {1} – {2}, {3} minutes grace.", { 1: formatTime(today.schedule.work_start), 2: formatTime(today.schedule.work_end), 3: today.schedule.grace_minutes }) : undefined}
+        actions={canManage && <button className="secondary" onClick={() => setEditing('new')}>{tr("+ Add a record")}</button>}
       />
 
       {user.employee && today && (
         <div className="card punch">
           <div>
             <div className="muted small">{formatDate(today.date)}</div>
-            {!record?.check_in && <div className="punch-status">You have not checked in yet.</div>}
+            {!record?.check_in && <div className="punch-status">{tr("You have not checked in yet.")}</div>}
             {record?.check_in && !record.check_out && (
               <div className="punch-status">
-                Checked in at <strong>{formatTime(record.check_in)}</strong>
-                {record.late_minutes > 0 && <span className="badge badge-rejected">{formatDuration(record.late_minutes)} late</span>}
+                {tr("Checked in at")}{' '}<strong>{formatTime(record.check_in)}</strong>
+                {record.late_minutes > 0 && <span className="badge badge-rejected">{formatDuration(record.late_minutes)} {tr("late")}</span>}
               </div>
             )}
             {record?.check_out && (
               <div className="punch-status">
-                {formatTime(record.check_in!)} → {formatTime(record.check_out)} · worked{' '}
+                {formatTime(record.check_in!)} → {formatTime(record.check_out)} {tr("· worked")}{' '}
                 <strong>{formatDuration(record.worked_minutes ?? 0)}</strong>
               </div>
             )}
             {today.schedule.require_location && !record?.check_out && (
-              <div className="muted small">Your location is recorded. Allow location access when the browser asks.</div>
+              <div className="muted small">{tr("Your location is recorded. Allow location access when the browser asks.")}</div>
             )}
           </div>
           <div>
             {!record?.check_in && (
               <button className="punch-button" disabled={!!busy} onClick={() => punch('in')}>
-                {busy ?? 'Check in'}
+                {busy ?? tr("Check in")}
               </button>
             )}
             {record?.check_in && !record.check_out && (
               <button className="punch-button danger" disabled={!!busy} onClick={() => punch('out')}>
-                {busy ?? 'Check out'}
+                {busy ?? tr("Check out")}
               </button>
             )}
           </div>
@@ -125,17 +127,17 @@ export function AttendancePage({ user }: { user: User }) {
 
       <div className="filters">
         <label className="inline">
-          From <input type="date" value={from} max={to} onChange={(e) => setFrom(e.target.value)} />
+          {tr("From")}{' '}<input type="date" value={from} max={to} onChange={(e) => setFrom(e.target.value)} />
         </label>
         <label className="inline">
-          To <input type="date" value={to} min={from} onChange={(e) => setTo(e.target.value)} />
+          {tr("To")}{' '}<input type="date" value={to} min={from} onChange={(e) => setTo(e.target.value)} />
         </label>
       </div>
 
-      {records === null && !error && <p className="muted">Loading…</p>}
+      {records === null && !error && <p className="muted">{tr("Loading…")}</p>}
       {records?.length === 0 && (
         <div className="card empty">
-          <p>No attendance in this period.</p>
+          <p>{tr("No attendance in this period.")}</p>
         </div>
       )}
 
@@ -144,13 +146,13 @@ export function AttendancePage({ user }: { user: User }) {
           <table>
             <thead>
               <tr>
-                {showEmployee && <th>Employee</th>}
-                <th>Date</th>
-                <th>Check in</th>
-                <th>Check out</th>
-                <th>Worked</th>
-                <th>Late</th>
-                {canManage && <th className="actions-col" aria-label="Actions" />}
+                {showEmployee && <th>{tr("Employee")}</th>}
+                <th>{tr("Date")}</th>
+                <th>{tr("Check in")}</th>
+                <th>{tr("Check out")}</th>
+                <th>{tr("Worked")}</th>
+                <th>{tr("Late")}</th>
+                {canManage && <th className="actions-col" aria-label={tr("Actions")} />}
               </tr>
             </thead>
             <tbody>
@@ -158,14 +160,13 @@ export function AttendancePage({ user }: { user: User }) {
                 <tr key={r.id}>
                   {showEmployee && (
                     <td>
-                      <div className="strong">{r.employee?.full_name}</div>
-                      <div className="muted small">{r.employee?.employee_code}</div>
+                      {r.employee && <Person name={r.employee.full_name} detail={r.employee.employee_code} />}
                     </td>
                   )}
                   <td>
                     {formatDate(r.date)}
-                    {r.note && <div className="muted small">{r.note}</div>}
-                    {r.edited_by && <div className="muted small">Edited by {r.edited_by}</div>}
+                    {r.note && <div className="muted small cell-note">{r.note}</div>}
+                    {r.edited_by && <div className="muted small">{tr("Edited by")}{' '}{r.edited_by}</div>}
                   </td>
                   <td>
                     {r.check_in ? formatTime(r.check_in) : '—'} <MapLink point={r.check_in_location} />
@@ -178,7 +179,7 @@ export function AttendancePage({ user }: { user: User }) {
                   {canManage && (
                     <td className="actions">
                       <button className="link" onClick={() => setEditing(r)}>
-                        Edit
+                        {tr("Edit")}
                       </button>
                     </td>
                   )}
@@ -208,13 +209,13 @@ function MapLink({ point }: { point: GeoPoint | null }) {
   const title = point.accuracy !== null ? `Accuracy about ${point.accuracy} m` : 'Location'
   return (
     <a
-      className="small"
+      className="map-link small"
       href={`https://www.google.com/maps?q=${point.latitude},${point.longitude}`}
       target="_blank"
       rel="noreferrer noopener"
       title={title}
     >
-      📍map
+      <Icon name="pin" size={14} /> {tr("Map")}
     </a>
   )
 }
@@ -256,16 +257,16 @@ function RecordForm({ record, onClose, onSaved }: { record: AttendanceRecord | n
   }
 
   return (
-    <Modal title={record ? `Correct attendance — ${record.employee?.full_name ?? ''}` : 'Add attendance record'} onClose={onClose}>
+    <Modal title={record ? tr("Correct attendance — {1}", { 1: record.employee?.full_name ?? '' }) : tr("Add attendance record")} onClose={onClose}>
       <form className="form" onSubmit={submit} noValidate>
         {record ? (
           <div className="summary">{formatDate(record.date)}</div>
         ) : (
           <>
             <label>
-              Employee
+              {tr("Employee")}
               <select value={employeeId} onChange={(e) => setEmployeeId(e.target.value)} autoFocus>
-                <option value="">— Select employee —</option>
+                <option value="">{tr("— Select employee —")}</option>
                 {employees.map((e) => (
                   <option key={e.id} value={e.id}>
                     {e.full_name} ({e.employee_code})
@@ -275,7 +276,7 @@ function RecordForm({ record, onClose, onSaved }: { record: AttendanceRecord | n
               <FieldError message={errors?.field('employee_id')} />
             </label>
             <label>
-              Date
+              {tr("Date")}
               <input type="date" value={date} max={localToday()} onChange={(e) => setDate(e.target.value)} />
               <FieldError message={errors?.field('date')} />
             </label>
@@ -283,27 +284,27 @@ function RecordForm({ record, onClose, onSaved }: { record: AttendanceRecord | n
         )}
         <div className="form-grid">
           <label>
-            Check in
+            {tr("Check in")}
             <input type="time" value={checkIn} onChange={(e) => setCheckIn(e.target.value)} />
             <FieldError message={errors?.field('check_in')} />
           </label>
           <label>
-            Check out <span className="muted small">(optional)</span>
+            {tr("Check out")}{' '}<span className="muted small">{tr("(optional)")}</span>
             <input type="time" value={checkOut} onChange={(e) => setCheckOut(e.target.value)} />
             <FieldError message={errors?.field('check_out')} />
           </label>
         </div>
         <label>
-          Note <span className="muted small">(why it was changed)</span>
+          {tr("Note")}{' '}<span className="muted small">{tr("(why it was changed)")}</span>
           <input value={note} onChange={(e) => setNote(e.target.value)} maxLength={500} />
         </label>
         <ErrorText message={general} />
         <div className="form-actions">
           <button type="submit" disabled={saving || !checkIn || (!record && !employeeId)}>
-            {saving ? 'Saving…' : 'Save'}
+            {saving ? tr("Saving…") : tr("Save")}
           </button>
           <button type="button" className="secondary" onClick={onClose} disabled={saving}>
-            Cancel
+            {tr("Cancel")}
           </button>
         </div>
       </form>

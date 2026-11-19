@@ -69,6 +69,7 @@ class LeaveTypeController
             'name' => ['required', 'string', 'max:80', TenantRule::unique('leave_types', 'name')->ignore($type?->id)],
             'days_per_year' => ['nullable', 'integer', 'min:1', 'max:365'],
             'prorate_first_year' => ['sometimes', 'boolean'],
+            'is_paid' => ['sometimes', 'boolean'],
             'is_active' => ['sometimes', 'boolean'],
         ], [
             'name.unique' => 'A leave type with this name already exists.',

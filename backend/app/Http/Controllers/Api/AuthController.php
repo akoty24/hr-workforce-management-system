@@ -24,6 +24,9 @@ class AuthController
 
     private const DECAY_SECONDS = 60;
 
+    /** Logins created by the local demo seeder (password DemoPassword123). */
+    private const DEMO_ACCOUNTS = ['admin@demo.test', 'hr@demo.test', 'leader@demo.test', 'employee@demo.test'];
+
     public function __construct(private readonly TenantContext $context) {}
 
     public function login(Request $request): UserResource
@@ -82,7 +85,19 @@ class AuthController
     public function tenant(): JsonResponse
     {
         $tenant = $this->context->current();
+        $data = ['name' => $tenant->name, 'slug' => $tenant->slug];
 
-        return response()->json(['data' => ['name' => $tenant->name, 'slug' => $tenant->slug]]);
+        // Local development only: the seeded demo logins that still exist here,
+        // so the sign-in page never offers an account that was renamed or removed.
+        if (app()->isLocal()) {
+            $data['demo_accounts'] = User::query()
+                ->whereIn('email', self::DEMO_ACCOUNTS)
+                ->where('is_active', true)
+                ->pluck('email')
+                ->sortBy(fn (string $email) => array_search($email, self::DEMO_ACCOUNTS, true))
+                ->values();
+        }
+
+        return response()->json(['data' => $data]);
     }
 }

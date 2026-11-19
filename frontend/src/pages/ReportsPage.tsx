@@ -1,8 +1,10 @@
 import { useEffect, useState } from 'react'
 import { api, errorMessage } from '../api'
 import type { Department, Report, ReportType } from '../types'
+import { Icon } from '../components/icons'
 import { ErrorText, PageHead } from '../components/ui'
 import { localToday } from '../format'
+import { tr } from '../i18n'
 
 const TYPES: { value: ReportType; label: string; hint: string }[] = [
   { value: 'summary', label: 'Summary', hint: 'Per employee: days attended, lateness, leave and permissions.' },
@@ -55,11 +57,11 @@ export function ReportsPage() {
   return (
     <section>
       <PageHead
-        title="Reports"
-        subtitle={current.hint}
+        title={tr("Reports")}
+        subtitle={tr(current.hint)}
         actions={
           <a className="button" href={api.reports.downloadUrl(type, { from, to, department_id: departmentId })}>
-            ⬇ Export to Excel
+            <Icon name="download" size={16} /> {tr("Export to Excel")}
           </a>
         }
       />
@@ -73,20 +75,20 @@ export function ReportsPage() {
             className={`tab ${type === t.value ? 'active' : ''}`}
             onClick={() => setType(t.value)}
           >
-            {t.label}
+            {tr(t.label)}
           </button>
         ))}
       </div>
 
       <div className="filters">
         <label className="inline">
-          From <input type="date" value={from} max={to} onChange={(e) => setFrom(e.target.value)} />
+          {tr("From")}{' '}<input type="date" value={from} max={to} onChange={(e) => setFrom(e.target.value)} />
         </label>
         <label className="inline">
-          To <input type="date" value={to} min={from} onChange={(e) => setTo(e.target.value)} />
+          {tr("To")}{' '}<input type="date" value={to} min={from} onChange={(e) => setTo(e.target.value)} />
         </label>
         <select value={departmentId} onChange={(e) => setDepartmentId(e.target.value)}>
-          <option value="">All departments</option>
+          <option value="">{tr("All departments")}</option>
           {departments.map((d) => (
             <option key={d.id} value={d.id}>
               {d.name}
@@ -96,11 +98,11 @@ export function ReportsPage() {
       </div>
 
       <ErrorText message={error} />
-      {loading && !report && <p className="muted">Loading…</p>}
+      {loading && !report && <p className="muted">{tr("Loading…")}</p>}
 
       {report && report.rows.length === 0 && (
         <div className="card empty">
-          <p>No data for this period.</p>
+          <p>{tr("No data for this period.")}</p>
         </div>
       )}
 
@@ -120,8 +122,8 @@ export function ReportsPage() {
                   {row.map((cell, j) => (
                     <td key={j}>
                       {typeof cell === 'string' && cell.startsWith('https://') ? (
-                        <a href={cell} target="_blank" rel="noreferrer noopener">
-                          📍map
+                        <a className="map-link" href={cell} target="_blank" rel="noreferrer noopener">
+                          <Icon name="pin" size={14} /> {tr("Map")}
                         </a>
                       ) : (
                         (cell ?? '—')
@@ -134,7 +136,7 @@ export function ReportsPage() {
           </table>
           <div className="table-foot muted small">
             <span>
-              {report.rows.length} row{report.rows.length === 1 ? '' : 's'}
+              {report.rows.length} {tr("row")}{report.rows.length === 1 ? '' : tr("s")}
             </span>
           </div>
         </div>

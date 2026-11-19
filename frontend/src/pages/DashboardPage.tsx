@@ -1,9 +1,11 @@
 import { useEffect, useState } from 'react'
 import { api, errorMessage } from '../api'
-import type { Dashboard, LeaveBalance, LeaveRequest, UpcomingHoliday, User } from '../types'
+import type { Dashboard, EmployeeDocument, LeaveBalance, LeaveRequest, UpcomingHoliday, User } from '../types'
 import { Link } from '../router'
-import { ErrorText, PageHead, StatusBadge } from '../components/ui'
-import { dateRange } from '../format'
+import { Icon } from '../components/icons'
+import { ErrorText, PageHead, Person, StatusBadge } from '../components/ui'
+import { dateRange, formatDate } from '../format'
+import { tr } from '../i18n'
 
 export function DashboardPage({ user }: { user: User }) {
   const [dashboard, setDashboard] = useState<Dashboard | null>(null)
@@ -20,27 +22,28 @@ export function DashboardPage({ user }: { user: User }) {
     }
   }, [])
 
-  const greeting = `Welcome, ${user.name.split(' ')[0]}`
+  const greeting = tr('Welcome, {1}', { 1: user.name.split(' ')[0] })
 
   if (error) return <ErrorText message={error} />
-  if (!dashboard) return <p className="muted">Loading…</p>
+  if (!dashboard) return <p className="muted">{tr("Loading…")}</p>
 
   if (dashboard.role === 'overview') {
     const s = dashboard.stats
     return (
       <>
-        <PageHead title={greeting} subtitle="Here is what is happening in your company today." />
+        <PageHead title={greeting} subtitle={tr("Here is what is happening in your company today.")} />
         <div className="stats">
-          <Stat label="Active employees" value={s.employees_active} hint={`${s.employees_total} total`} to="/employees" />
-          <Stat label="Departments" value={s.departments} to="/departments" />
-          <Stat label="Pending leave requests" value={s.pending_requests} highlight={s.pending_requests > 0} to="/leave" />
-          <Stat label="Pending permissions" value={s.pending_permissions} highlight={s.pending_permissions > 0} to="/permissions" />
-          <Stat label="On leave today" value={s.on_leave_today} to="/leave" />
+          <Stat label={tr("Active employees")} value={s.employees_active} hint={tr("{1} total", { 1: s.employees_total })} to="/employees" />
+          <Stat label={tr("Departments")} value={s.departments} to="/departments" />
+          <Stat label={tr("Pending leave requests")} value={s.pending_requests} highlight={s.pending_requests > 0} to="/leave" />
+          <Stat label={tr("Pending permissions")} value={s.pending_permissions} highlight={s.pending_permissions > 0} to="/permissions" />
+          <Stat label={tr("On leave today")} value={s.on_leave_today} to="/leave" />
         </div>
         <div className="grid-2">
-          <RequestList title="Waiting for your decision" requests={dashboard.pending_requests} empty="No pending requests." />
-          <RequestList title="On leave today" requests={dashboard.on_leave_today} empty="Everyone is in today." />
+          <RequestList title={tr("Waiting for your decision")} requests={dashboard.pending_requests} empty={tr("No pending requests.")} />
+          <RequestList title={tr("On leave today")} requests={dashboard.on_leave_today} empty={tr("Everyone is in today.")} />
         </div>
+        <ExpiringDocuments />
         <Holidays holidays={dashboard.upcoming_holidays} />
       </>
     )
@@ -61,59 +64,104 @@ export function DashboardPage({ user }: { user: User }) {
                 .join(' · ')
             : undefined
         }
-        actions={<Link to="/leave" className="button">Request leave</Link>}
+        actions={<Link to="/leave" className="button">{tr("Request leave")}</Link>}
       />
       {!dashboard.employee && (
-        <div className="card notice">Your account is not linked to an employee record yet. Ask an administrator.</div>
+        <div className="card notice">{tr("Your account is not linked to an employee record yet. Ask an administrator.")}</div>
       )}
 
       {dashboard.team && (
         <>
-          <h2 className="section-title">My team</h2>
+          <h2 className="section-title">{tr("My team")}</h2>
           <div className="stats">
-            <Stat label="Team members" value={dashboard.team.size} to="/employees" />
+            <Stat label={tr("Team members")} value={dashboard.team.size} to="/employees" />
             <Stat
-              label="Waiting for your decision"
+              label={tr("Waiting for your decision")}
               value={dashboard.team.pending_requests.length}
               highlight={dashboard.team.pending_requests.length > 0}
               to="/leave"
             />
             <Stat
-              label="Permissions to decide"
+              label={tr("Permissions to decide")}
               value={dashboard.team.pending_permissions}
               highlight={dashboard.team.pending_permissions > 0}
               to="/permissions"
             />
-            <Stat label="On leave today" value={dashboard.team.on_leave_today.length} to="/leave" />
+            <Stat label={tr("On leave today")} value={dashboard.team.on_leave_today.length} to="/leave" />
           </div>
           <div className="grid-2 section">
-            <RequestList title="Team requests to decide" requests={dashboard.team.pending_requests} empty="Nothing waiting for you." />
-            <RequestList title="Team on leave today" requests={dashboard.team.on_leave_today} empty="Your whole team is in today." />
+            <RequestList title={tr("Team requests to decide")} requests={dashboard.team.pending_requests} empty={tr("Nothing waiting for you.")} />
+            <RequestList title={tr("Team on leave today")} requests={dashboard.team.on_leave_today} empty={tr("Your whole team is in today.")} />
           </div>
-          <h2 className="section-title">My leave</h2>
+          <h2 className="section-title">{tr("My leave")}</h2>
         </>
       )}
 
       {dashboard.balances.length > 0 && <Balances balances={dashboard.balances} />}
-      <RequestList title="My recent requests" requests={dashboard.recent_requests} empty="You have not requested leave yet." />
+      <RequestList title={tr("My recent requests")} requests={dashboard.recent_requests} empty={tr("You have not requested leave yet.")} own />
       <Holidays holidays={dashboard.upcoming_holidays} />
     </>
+  )
+}
+
+/** Admins/HR: documents expired or expiring within 30 days. */
+function ExpiringDocuments() {
+  const [docs, setDocs] = useState<EmployeeDocument[]>([])
+
+  useEffect(() => {
+    let active = true
+    api.documents
+      .expiring()
+      .then((d) => active && setDocs(d))
+      .catch(() => {})
+    return () => {
+      active = false
+    }
+  }, [])
+
+  if (docs.length === 0) return null
+  return (
+    <div className="alert alert-warning" role="note">
+      <span className="alert-icon" aria-hidden>
+        <Icon name="file" size={20} />
+      </span>
+      <div className="alert-body">
+        <div className="alert-title">{tr("Documents expiring soon")}</div>
+        <ul className="alert-list">
+          {docs.map((d) => (
+            <li key={d.id}>
+              <span>
+                <span className="strong">{d.employee?.full_name}</span> · {d.title}
+              </span>
+              <span className="alert-date">
+                {d.status === 'expired' ? tr("Expired") : tr("Expires in {1} days", { 1: d.days_left })} · {formatDate(d.expires_at)}
+              </span>
+            </li>
+          ))}
+        </ul>
+      </div>
+    </div>
   )
 }
 
 function Holidays({ holidays }: { holidays: UpcomingHoliday[] }) {
   if (holidays.length === 0) return null
   return (
-    <div className="card section">
-      <h2>Upcoming public holidays</h2>
-      <ul className="list">
-        {holidays.map((h) => (
-          <li key={`${h.name}-${h.start_date}`}>
-            <div className="strong">{h.name}</div>
-            <div className="muted small">{dateRange(h.start_date, h.end_date)}</div>
-          </li>
-        ))}
-      </ul>
+    <div className="alert alert-holiday" role="note">
+      <span className="alert-icon" aria-hidden>
+        <Icon name="sun" size={20} />
+      </span>
+      <div className="alert-body">
+        <div className="alert-title">{tr("Upcoming public holidays")}</div>
+        <ul className="alert-list">
+          {holidays.map((h) => (
+            <li key={`${h.name}-${h.start_date}`}>
+              <span className="strong">{h.name}</span>
+              <span className="alert-date">{dateRange(h.start_date, h.end_date)}</span>
+            </li>
+          ))}
+        </ul>
+      </div>
     </div>
   )
 }
@@ -134,15 +182,15 @@ export function Balances({ balances }: { balances: LeaveBalance[] }) {
       {balances.map((b) => (
         <div key={b.leave_type.id} className="card stat">
           <div className="stat-value">{b.remaining ?? '∞'}</div>
-          <div className="stat-label">{b.leave_type.name} remaining</div>
+          <div className="stat-label">{tr("{1} remaining", { 1: tr(b.leave_type.name) })}</div>
           <div className="muted small">
             {b.allowance === null
-              ? 'No annual limit'
+              ? tr("No annual limit")
               : b.allowance !== b.full_allowance
-                ? `${b.allowance} this year (prorated from ${b.full_allowance})`
-                : `${b.allowance} per year`}{' '}
-            · {b.approved} taken
-            {b.pending > 0 && ` · ${b.pending} pending`}
+                ? tr("{1} this year (prorated from {2})", { 1: b.allowance, 2: b.full_allowance })
+                : tr("{1} per year", { 1: b.allowance })}{' '}
+            · {b.approved} {tr("taken")}
+            {b.pending > 0 && tr("· {1} pending", { 1: b.pending })}
           </div>
         </div>
       ))}
@@ -150,22 +198,47 @@ export function Balances({ balances }: { balances: LeaveBalance[] }) {
   )
 }
 
-function RequestList({ title, requests, empty }: { title: string; requests: LeaveRequest[]; empty: string }) {
+function RequestList({
+  title,
+  requests,
+  empty,
+  own = false,
+}: {
+  title: string
+  requests: LeaveRequest[]
+  empty: string
+  /** The viewer's own requests: no need to repeat their name and photo. */
+  own?: boolean
+}) {
   return (
     <div className="card">
-      <h2>{title}</h2>
+      <div className="card-head">
+        <h2>{title}</h2>
+        {requests.length > 0 && (
+          <Link to="/leave" className="small">
+            {tr("Open leave →")}
+          </Link>
+        )}
+      </div>
       {requests.length === 0 ? (
         <p className="muted">{empty}</p>
       ) : (
         <ul className="list">
           {requests.map((r) => (
             <li key={r.id}>
-              <div>
-                <div className="strong">{r.employee.full_name}</div>
-                <div className="muted small">
-                  {r.leave_type.name} · {dateRange(r.start_date, r.end_date)} · {r.days} day{r.days === 1 ? '' : 's'}
+              {own ? (
+                <div>
+                  <div className="strong">{tr(r.leave_type.name)}</div>
+                  <div className="muted small">
+                    {dateRange(r.start_date, r.end_date)} · {r.days} {tr("day")}{r.days === 1 ? '' : tr("s")}
+                  </div>
                 </div>
-              </div>
+              ) : (
+                <Person
+                  name={r.employee.full_name}
+                  detail={tr("{1} · {2} · {3} day{4}", { 1: tr(r.leave_type.name), 2: dateRange(r.start_date, r.end_date), 3: r.days, 4: r.days === 1 ? '' : 's' })}
+                />
+              )}
               <StatusBadge status={r.status} />
             </li>
           ))}

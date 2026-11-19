@@ -3,6 +3,7 @@ import { ApiError, api, errorMessage } from '../api'
 import { managesHr, type Holiday, type User } from '../types'
 import { ErrorText, FieldError, Modal, PageHead } from '../components/ui'
 import { dateRange } from '../format'
+import { tr } from '../i18n'
 
 export function HolidaysPage({ user }: { user: User }) {
   const canEdit = managesHr(user)
@@ -32,7 +33,7 @@ export function HolidaysPage({ user }: { user: User }) {
   }, [year])
 
   async function remove(holiday: Holiday) {
-    if (!window.confirm(`Delete "${holiday.name}"?`)) return
+    if (!window.confirm(tr("Delete \"{1}\"?", { 1: holiday.name }))) return
     try {
       await api.holidays.remove(holiday.id)
       await load()
@@ -44,13 +45,13 @@ export function HolidaysPage({ user }: { user: User }) {
   return (
     <section>
       <PageHead
-        title="Public holidays"
+        title={tr("Public holidays")}
         subtitle={
           canEdit
-            ? 'Days off for everyone. They are not counted in leave requests submitted after you add them.'
-            : 'Official days off for the whole company.'
+            ? tr("Days off for everyone. They are not counted in leave requests submitted after you add them.")
+            : tr("Official days off for the whole company.")
         }
-        actions={canEdit && <button onClick={() => setEditing('new')}>+ New holiday</button>}
+        actions={canEdit && <button onClick={() => setEditing('new')}>{tr("+ New holiday")}</button>}
       />
 
       <div className="filters">
@@ -66,11 +67,11 @@ export function HolidaysPage({ user }: { user: User }) {
       </div>
 
       <ErrorText message={error} />
-      {holidays === null && !error && <p className="muted">Loading…</p>}
+      {holidays === null && !error && <p className="muted">{tr("Loading…")}</p>}
 
       {holidays?.length === 0 && (
         <div className="card empty">
-          <p>No public holidays in {year}.</p>
+          <p>{tr("No public holidays in")}{' '}{year}.</p>
         </div>
       )}
 
@@ -79,10 +80,10 @@ export function HolidaysPage({ user }: { user: User }) {
           <table>
             <thead>
               <tr>
-                <th>Holiday</th>
-                <th>Dates</th>
-                <th className="num">Days</th>
-                {canEdit && <th className="actions-col" aria-label="Actions" />}
+                <th>{tr("Holiday")}</th>
+                <th>{tr("Dates")}</th>
+                <th className="num">{tr("Days")}</th>
+                {canEdit && <th className="actions-col" aria-label={tr("Actions")} />}
               </tr>
             </thead>
             <tbody>
@@ -94,10 +95,10 @@ export function HolidaysPage({ user }: { user: User }) {
                   {canEdit && (
                     <td className="actions">
                       <button className="link" onClick={() => setEditing(h)}>
-                        Edit
+                        {tr("Edit")}
                       </button>
                       <button className="link danger" onClick={() => remove(h)}>
-                        Delete
+                        {tr("Delete")}
                       </button>
                     </td>
                   )}
@@ -148,16 +149,16 @@ function HolidayForm({ holiday, onClose, onSaved }: { holiday: Holiday | null; o
   }
 
   return (
-    <Modal title={holiday ? `Edit “${holiday.name}”` : 'New public holiday'} onClose={onClose}>
+    <Modal title={holiday ? tr("Edit “{1}”", { 1: holiday.name }) : tr("New public holiday")} onClose={onClose}>
       <form className="form" onSubmit={submit} noValidate>
         <label>
-          Name
-          <input value={name} onChange={(e) => setName(e.target.value)} maxLength={120} autoFocus placeholder="e.g. Eid al-Fitr" />
+          {tr("Name")}
+          <input value={name} onChange={(e) => setName(e.target.value)} maxLength={120} autoFocus placeholder={tr("e.g. Eid al-Fitr")} />
           <FieldError message={errors?.field('name')} />
         </label>
         <div className="form-grid">
           <label>
-            From
+            {tr("From")}
             <input
               type="date"
               value={start}
@@ -169,7 +170,7 @@ function HolidayForm({ holiday, onClose, onSaved }: { holiday: Holiday | null; o
             <FieldError message={errors?.field('start_date')} />
           </label>
           <label>
-            To <span className="muted small">(same day for a one-day holiday)</span>
+            {tr("To")}{' '}<span className="muted small">{tr("(same day for a one-day holiday)")}</span>
             <input type="date" value={end} min={start} onChange={(e) => setEnd(e.target.value)} />
             <FieldError message={errors?.field('end_date')} />
           </label>
@@ -177,10 +178,10 @@ function HolidayForm({ holiday, onClose, onSaved }: { holiday: Holiday | null; o
         <ErrorText message={general} />
         <div className="form-actions">
           <button type="submit" disabled={saving || !name.trim() || !start}>
-            {saving ? 'Saving…' : 'Save'}
+            {saving ? tr("Saving…") : tr("Save")}
           </button>
           <button type="button" className="secondary" onClick={onClose} disabled={saving}>
-            Cancel
+            {tr("Cancel")}
           </button>
         </div>
       </form>

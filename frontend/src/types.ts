@@ -1,6 +1,8 @@
 export interface Tenant {
   name: string
   slug: string
+  /** Local development only: seeded demo logins that exist in this company. */
+  demo_accounts?: string[]
 }
 
 export type UserRole = 'admin' | 'hr' | 'team_leader' | 'employee'
@@ -23,6 +25,8 @@ export interface User {
   email: string
   role: UserRole
   is_active: boolean
+  /** Someone else set the password: the user must choose their own first. */
+  must_change_password?: boolean
   created_at?: string | null
   employee?: { id: string; full_name: string } | null
 }
@@ -79,6 +83,10 @@ export interface EmployeeInput {
   department_id: string
   manager_id: string
   user_id: string
+  /** Create a new sign-in account for this employee in the same save. */
+  account?: { role: UserRole; password: string } | null
+  /** Reset the password of the already linked sign-in account. */
+  new_password?: string | null
 }
 
 export interface LeaveType {
@@ -86,6 +94,8 @@ export interface LeaveType {
   name: string
   days_per_year: number | null
   prorate_first_year: boolean
+  /** Unpaid types are deducted from the salary in payroll. */
+  is_paid: boolean
   is_active: boolean
 }
 
@@ -93,6 +103,7 @@ export interface LeaveTypeInput {
   name: string
   days_per_year: number | null
   prorate_first_year: boolean
+  is_paid: boolean
   is_active: boolean
 }
 
@@ -234,6 +245,15 @@ export interface CompanySettings {
   work_end: string
   grace_minutes: number
   require_location: boolean
+  payroll_day_divisor: number
+  deduct_absence: boolean
+  late_multiplier: number
+  overtime_multiplier: number
+  social_insurance_enabled: boolean
+  social_insurance_rate: number
+  insurable_min: number
+  insurable_max: number
+  income_tax_enabled: boolean
 }
 
 export interface AttendanceToday {
@@ -262,4 +282,93 @@ export interface Report {
   title: string
   headers: string[]
   rows: (string | number | null)[][]
+}
+
+/** Owner console: the system owner (not a company user). */
+export interface PlatformOwner {
+  id: string
+  name: string
+  email: string
+}
+
+export interface PlatformTenant {
+  id: string
+  slug: string
+  name: string
+  status: 'active' | 'suspended'
+  url: string
+  created_at: string | null
+  users_count: number
+  employees_count: number
+}
+
+export interface PlatformTenantInput {
+  name: string
+  slug: string
+  admin_name: string
+  admin_email: string
+  admin_password: string
+}
+
+export type PayslipItemType = 'allowance' | 'bonus' | 'deduction'
+
+export interface PayslipItem {
+  type: PayslipItemType
+  label: string
+  amount: number
+}
+
+export interface Payslip {
+  id: string
+  employee: { id: string; full_name: string; employee_code: string }
+  period: { year: number; month: number } | null
+  currency: string
+  working_days: number
+  absent_days: number
+  unpaid_leave_days: number
+  late_minutes: number
+  overtime_minutes: number
+  items: PayslipItem[]
+  base_salary: number
+  absence_deduction: number
+  unpaid_leave_deduction: number
+  late_deduction: number
+  overtime_pay: number
+  additions: number
+  other_deductions: number
+  gross: number
+  social_insurance: number
+  income_tax: number
+  net: number
+}
+
+export interface PayrollRun {
+  id: string
+  year: number
+  month: number
+  status: 'draft' | 'finalized'
+  finalized_at: string | null
+  payslips_count: number
+  total_gross: number
+  total_net: number
+}
+
+export interface PayrollRunDetail extends PayrollRun {
+  payslips: Payslip[]
+}
+
+export type DocumentType = 'contract' | 'national_id' | 'passport' | 'social_insurance' | 'certificate' | 'medical' | 'other'
+
+export interface EmployeeDocument {
+  id: string
+  type: DocumentType
+  title: string
+  original_name: string
+  mime: string
+  size: number
+  expires_at: string | null
+  days_left: number | null
+  status: 'valid' | 'expiring' | 'expired'
+  created_at: string | null
+  employee?: { id: string; full_name: string }
 }

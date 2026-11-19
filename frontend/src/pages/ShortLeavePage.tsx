@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useState, type FormEvent } from 'react'
 import { ApiError, api, errorMessage } from '../api'
 import { managesHr, type Employee, type LeaveStatus, type ShortLeave, type User } from '../types'
-import { ErrorText, FieldError, Modal, PageHead, StatusBadge } from '../components/ui'
+import { ErrorText, FieldError, Modal, PageHead, Person, StatusBadge } from '../components/ui'
 import { formatDate, formatDuration, formatTime, localToday } from '../format'
+import { tr } from '../i18n'
 
 /** Must match HR_SHORT_LEAVE_MAX_MINUTES on the server (default 120). */
 const MAX_MINUTES = 120
@@ -56,7 +57,7 @@ export function ShortLeavePage({ user }: { user: User }) {
   }, [status])
 
   async function cancel(item: ShortLeave) {
-    if (!window.confirm('Cancel this permission request?')) return
+    if (!window.confirm(tr("Cancel this permission request?"))) return
     try {
       await api.shortLeaves.cancel(item.id)
       await load()
@@ -71,13 +72,13 @@ export function ShortLeavePage({ user }: { user: User }) {
   return (
     <section>
       <PageHead
-        title="Permissions"
-        subtitle={`Leave for part of a working day, up to ${formatDuration(MAX_MINUTES)}. Not deducted from leave balance.`}
-        actions={canRequest && <button onClick={() => setCreating(true)}>+ Request permission</button>}
+        title={tr("Permissions")}
+        subtitle={tr("Leave for part of a working day, up to {1}. Not deducted from leave balance.", { 1: formatDuration(MAX_MINUTES) })}
+        actions={canRequest && <button onClick={() => setCreating(true)}>{tr("+ Request permission")}</button>}
       />
 
       {!canRequest && (
-        <div className="card notice">Your account is not linked to an employee record yet. Ask an administrator.</div>
+        <div className="card notice">{tr("Your account is not linked to an employee record yet. Ask an administrator.")}</div>
       )}
 
       <div className="tabs" role="tablist">
@@ -89,17 +90,17 @@ export function ShortLeavePage({ user }: { user: User }) {
             className={`tab ${status === f.value ? 'active' : ''}`}
             onClick={() => setStatus(f.value)}
           >
-            {f.label}
+            {tr(f.label)}
           </button>
         ))}
       </div>
 
       <ErrorText message={error} />
-      {items === null && !error && <p className="muted">Loading…</p>}
+      {items === null && !error && <p className="muted">{tr("Loading…")}</p>}
 
       {items?.length === 0 && (
         <div className="card empty">
-          <p>No permissions here.</p>
+          <p>{tr("No permissions here.")}</p>
         </div>
       )}
 
@@ -108,12 +109,12 @@ export function ShortLeavePage({ user }: { user: User }) {
           <table>
             <thead>
               <tr>
-                {showEmployee && <th>Employee</th>}
-                <th>Date</th>
-                <th>Time</th>
-                <th>Duration</th>
-                <th>Status</th>
-                <th className="actions-col" aria-label="Actions" />
+                {showEmployee && <th>{tr("Employee")}</th>}
+                <th>{tr("Date")}</th>
+                <th>{tr("Time")}</th>
+                <th>{tr("Duration")}</th>
+                <th>{tr("Status")}</th>
+                <th className="actions-col" aria-label={tr("Actions")} />
               </tr>
             </thead>
             <tbody>
@@ -121,15 +122,12 @@ export function ShortLeavePage({ user }: { user: User }) {
                 <tr key={p.id}>
                   {showEmployee && (
                     <td>
-                      <div className="strong">
-                        {p.employee.full_name} {isOwn(p) && <span className="muted small">(you)</span>}
-                      </div>
-                      <div className="muted small">{p.employee.employee_code}</div>
+                      <Person name={p.employee.full_name} detail={p.employee.employee_code} you={isOwn(p)} />
                     </td>
                   )}
                   <td>
                     {formatDate(p.date)}
-                    {p.reason && <div className="muted small">{p.reason}</div>}
+                    {p.reason && <div className="muted small cell-note">{p.reason}</div>}
                   </td>
                   <td>
                     {formatTime(p.start_time)} → {formatTime(p.end_time)}
@@ -140,7 +138,7 @@ export function ShortLeavePage({ user }: { user: User }) {
                     {p.decision_note && <div className="muted small">“{p.decision_note}”</div>}
                     {p.decided_by && (
                       <div className="muted small">
-                        by {p.decided_by}, {formatDate(p.decided_at)}
+                        {tr("by")}{' '}{p.decided_by}, {formatDate(p.decided_at)}
                       </div>
                     )}
                   </td>
@@ -148,16 +146,16 @@ export function ShortLeavePage({ user }: { user: User }) {
                     {p.status === 'pending' && canDecide(p) && (
                       <>
                         <button className="link" onClick={() => setDeciding({ item: p, action: 'approve' })}>
-                          Approve
+                          {tr("Approve")}
                         </button>
                         <button className="link danger" onClick={() => setDeciding({ item: p, action: 'reject' })}>
-                          Reject
+                          {tr("Reject")}
                         </button>
                       </>
                     )}
                     {p.status === 'pending' && isOwn(p) && (
                       <button className="link danger" onClick={() => cancel(p)}>
-                        Cancel
+                        {tr("Cancel")}
                       </button>
                     )}
                   </td>
@@ -240,13 +238,13 @@ function PermissionForm({ user, onClose, onSaved }: { user: User; onClose: () =>
   }
 
   return (
-    <Modal title="Request permission" onClose={onClose}>
+    <Modal title={tr("Request permission")} onClose={onClose}>
       <form className="form" onSubmit={submit} noValidate>
         {isAdmin && (
           <label>
-            Employee
+            {tr("Employee")}
             <select value={employeeId} onChange={(e) => setEmployeeId(e.target.value)} autoFocus>
-              <option value="">{user.employee ? `Myself (${user.employee.full_name})` : '— Select employee —'}</option>
+              <option value="">{user.employee ? tr("Myself ({1})", { 1: user.employee.full_name }) : tr("— Select employee —")}</option>
               {employees
                 .filter((e) => e.id !== user.employee?.id)
                 .map((e) => (
@@ -259,40 +257,40 @@ function PermissionForm({ user, onClose, onSaved }: { user: User; onClose: () =>
           </label>
         )}
         <label>
-          Date
+          {tr("Date")}
           <input type="date" value={date} min={isAdmin ? undefined : today} onChange={(e) => setDate(e.target.value)} />
           <FieldError message={errors?.field('date')} />
         </label>
         <div className="form-grid">
           <label>
-            From
+            {tr("From")}
             <input type="time" step={60} value={from} onChange={(e) => setFrom(e.target.value)} />
             <FieldError message={errors?.field('start_time')} />
           </label>
           <label>
-            To
+            {tr("To")}
             <input type="time" step={60} value={to} onChange={(e) => setTo(e.target.value)} />
             <FieldError message={errors?.field('end_time')} />
           </label>
         </div>
         <p className={`small ${tooLong || invalidRange ? 'field-error' : 'muted'}`}>
           {invalidRange
-            ? 'The end time must be after the start time.'
+            ? tr("The end time must be after the start time.")
             : minutes > 0
-              ? `Duration: ${formatDuration(minutes)}${tooLong ? ` — the maximum is ${formatDuration(MAX_MINUTES)}.` : ''}`
-              : `Choose the hours and minutes. Maximum ${formatDuration(MAX_MINUTES)}.`}
+              ? tr("Duration: {1}{2}", { 1: formatDuration(minutes), 2: tooLong ? ` — the maximum is ${formatDuration(MAX_MINUTES)}.` : '' })
+              : tr("Choose the hours and minutes. Maximum {1}.", { 1: formatDuration(MAX_MINUTES) })}
         </p>
         <label>
-          Reason <span className="muted small">(optional)</span>
+          {tr("Reason")}{' '}<span className="muted small">{tr("(optional)")}</span>
           <textarea value={reason} onChange={(e) => setReason(e.target.value)} rows={2} maxLength={1000} />
         </label>
         <ErrorText message={general} />
         <div className="form-actions">
           <button type="submit" disabled={saving || !from || !to || tooLong || invalidRange}>
-            {saving ? 'Submitting…' : 'Submit request'}
+            {saving ? tr("Submitting…") : tr("Submit request")}
           </button>
           <button type="button" className="secondary" onClick={onClose} disabled={saving}>
-            Cancel
+            {tr("Cancel")}
           </button>
         </div>
       </form>
@@ -320,7 +318,7 @@ function DecisionForm({ decision, onClose, onDone }: { decision: Decision; onClo
   }
 
   return (
-    <Modal title={action === 'approve' ? 'Approve permission' : 'Reject permission'} onClose={onClose}>
+    <Modal title={action === 'approve' ? tr("Approve permission") : tr("Reject permission")} onClose={onClose}>
       <form className="form" onSubmit={submit}>
         <div className="summary">
           <div className="strong">{item.employee.full_name}</div>
@@ -330,16 +328,16 @@ function DecisionForm({ decision, onClose, onDone }: { decision: Decision; onClo
           {item.reason && <div className="muted small">“{item.reason}”</div>}
         </div>
         <label>
-          Note to the employee <span className="muted small">(optional)</span>
+          {tr("Note to the employee")}{' '}<span className="muted small">{tr("(optional)")}</span>
           <textarea value={note} onChange={(e) => setNote(e.target.value)} rows={2} maxLength={1000} autoFocus />
         </label>
         <ErrorText message={error} />
         <div className="form-actions">
           <button type="submit" className={action === 'reject' ? 'danger' : ''} disabled={saving}>
-            {saving ? 'Saving…' : action === 'approve' ? 'Approve' : 'Reject'}
+            {saving ? tr("Saving…") : action === 'approve' ? tr("Approve") : tr("Reject")}
           </button>
           <button type="button" className="secondary" onClick={onClose} disabled={saving}>
-            Cancel
+            {tr("Cancel")}
           </button>
         </div>
       </form>
