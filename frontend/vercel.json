@@ -1,0 +1,9 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "rewrites": [
+    { "source": "/api/:path*", "destination": "https://hr-workforce-management-system.ethiodeploy.app/api/:path*" },
+    { "source": "/up", "destination": "https://hr-workforce-management-system.ethiodeploy.app/up" },
+    { "source": "/health", "destination": "https://hr-workforce-management-system.ethiodeploy.app/health" },
+    { "source": "/((?!assets/).*)", "destination": "/index.html" }
+  ]
+}
