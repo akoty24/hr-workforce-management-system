@@ -49,7 +49,7 @@ return [
         // DB_URL (e.g. mysql://user:pass@host:3306/db) takes precedence over DB_HOST/DB_PORT/...
         'mysql' => [
             'driver' => 'mysql',
-            'url' => env('DB_URL'),
+            'url' => env('DATABASE_URL', env('DB_URL')),
             'host' => env('DB_HOST', '127.0.0.1'),
             'port' => env('DB_PORT', '3306'),
             'database' => env('DB_DATABASE', 'hr_workforce'),
