@@ -1,0 +1,149 @@
+<?php
+
+namespace App\Demo;
+
+use App\Leave\LeaveService;
+use App\Models\Department;
+use App\Models\Employee;
+use App\Models\EmployeeStatus;
+use App\Models\Holiday;
+use App\Models\LeaveStatus;
+use App\Models\LeaveType;
+use App\Models\Salary;
+use App\Models\Tenant;
+use App\Models\User;
+use App\Models\UserRole;
+use App\Tenancy\TenantContext;
+use Carbon\CarbonImmutable;
+use Illuminate\Support\Facades\DB;
+
+/**
+ * Sample data for trying the system: departments, nine employees, a login for
+ * each role, leave types and requests, public holidays and salaries.
+ * Used by the local demo seeder and by `tenant:demo-data` for a real company.
+ */
+final class DemoData
+{
+    public const HR_EMAIL = 'hr@demo.test';
+
+    public const LEADER_EMAIL = 'leader@demo.test';
+
+    public const EMPLOYEE_EMAIL = 'employee@demo.test';
+
+    /** Demo monthly salaries in EGP (the terminated employee has none). */
+    public const SALARIES = [
+        'EMP-001' => 18000, 'EMP-002' => 32000, 'EMP-003' => 15000, 'EMP-004' => 14000,
+        'EMP-005' => 12000, 'EMP-006' => 28000, 'EMP-007' => 16000, 'EMP-009' => 9500,
+    ];
+
+    public function __construct(
+        private readonly TenantContext $context,
+        private readonly LeaveService $leave,
+    ) {}
+
+    /** True when the company already has employees (demo data is then skipped). */
+    public function hasData(Tenant $tenant): bool
+    {
+        return $this->context->run($tenant, fn () => Employee::query()->exists());
+    }
+
+    /**
+     * Fill the company. $decider (an admin) approves/rejects the sample requests.
+     *
+     * @return list<string> the demo login emails created
+     */
+    public function fill(Tenant $tenant, User $decider, string $password): array
+    {
+        return $this->context->run($tenant, fn () => DB::transaction(function () use ($decider, $password) {
+            $logins = [];
+            $user = function (string $name, string $email, UserRole $role) use ($password, &$logins): ?User {
+                if (User::query()->where('email', $email)->exists()) {
+                    return null; // never touch an existing account
+                }
+                $logins[] = $email;
+
+                return User::create(['name' => $name, 'email' => $email, 'password' => $password, 'role' => $role]);
+            };
+
+            $employeeUser = $user('Mona Hassan', self::EMPLOYEE_EMAIL, UserRole::Employee);
+            $leaderUser = $user('Ahmed Ali', self::LEADER_EMAIL, UserRole::TeamLeader);
+            $hrUser = $user('Sara Mahmoud', self::HR_EMAIL, UserRole::Hr);
+
+            // Public holidays (dates relative to today so they show as upcoming).
+            $base = now()->startOfDay();
+            Holiday::create(['name' => 'National Day', 'start_date' => $base->copy()->addDays(20)->toDateString(), 'end_date' => $base->copy()->addDays(20)->toDateString()]);
+            Holiday::create(['name' => 'New Year Holiday', 'start_date' => $base->copy()->addYear()->startOfYear()->toDateString(), 'end_date' => $base->copy()->addYear()->startOfYear()->toDateString()]);
+
+            $departments = [];
+            foreach ([
+                ['Human Resources', 'Recruitment, onboarding and employee relations.'],
+                ['Finance', 'Payroll, budgeting and accounting.'],
+                ['Engineering', 'Product development and IT.'],
+                ['Sales', null],
+            ] as [$name, $description]) {
+                $departments[$name] = Department::query()->firstOrCreate(['name' => $name], ['description' => $description]);
+            }
+
+            $people = [
+                ['EMP-001', 'Mona', 'Hassan', 'Engineering', 'Software Engineer', '2022-03-01', EmployeeStatus::Active, $employeeUser?->id],
+                ['EMP-002', 'Ahmed', 'Ali', 'Engineering', 'Engineering Manager', '2019-07-15', EmployeeStatus::Active, $leaderUser?->id],
+                ['EMP-003', 'Sara', 'Mahmoud', 'Human Resources', 'HR Specialist', '2021-01-10', EmployeeStatus::Active, $hrUser?->id],
+                ['EMP-004', 'Omar', 'Khaled', 'Finance', 'Accountant', '2020-09-20', EmployeeStatus::Active, null],
+                ['EMP-005', 'Nour', 'Ibrahim', 'Sales', 'Account Executive', '2023-05-02', EmployeeStatus::Active, null],
+                ['EMP-006', 'Youssef', 'Adel', 'Sales', 'Sales Manager', '2018-11-11', EmployeeStatus::Active, null],
+                ['EMP-007', 'Laila', 'Samir', 'Finance', 'Financial Analyst', '2024-02-18', EmployeeStatus::OnLeave, null],
+                ['EMP-008', 'Karim', 'Fathy', 'Engineering', 'QA Engineer', '2017-04-03', EmployeeStatus::Terminated, null],
+                // Joined mid-year: annual leave is prorated (6 of 12 months).
+                ['EMP-009', 'Salma', 'Mostafa', 'Engineering', 'Junior Developer', now()->startOfYear()->addMonths(6)->addDays(11)->toDateString(), EmployeeStatus::Active, null],
+            ];
+
+            $employees = [];
+            foreach ($people as [$code, $first, $last, $dept, $title, $hired, $status, $userId]) {
+                $employees[$code] = Employee::create([
+                    'employee_code' => $code,
+                    'first_name' => $first,
+                    'last_name' => $last,
+                    'email' => strtolower("{$first}.{$last}@demo.test"),
+                    'phone' => '+20 10 '.random_int(1000, 9999).' '.random_int(1000, 9999),
+                    'job_title' => $title,
+                    'department_id' => $departments[$dept]->id,
+                    'hire_date' => $hired,
+                    'status' => $status,
+                    'user_id' => $userId,
+                ]);
+            }
+
+            // Reporting lines: Ahmed (team leader) manages Mona, Karim and Salma; Youssef manages Nour.
+            foreach (['EMP-001' => 'EMP-002', 'EMP-008' => 'EMP-002', 'EMP-009' => 'EMP-002', 'EMP-005' => 'EMP-006'] as $code => $managerCode) {
+                $employees[$code]->update(['manager_id' => $employees[$managerCode]->id]);
+            }
+
+            $annual = LeaveType::query()->firstOrCreate(['name' => 'Annual Leave'], ['days_per_year' => 21, 'prorate_first_year' => true]);
+            $sick = LeaveType::query()->firstOrCreate(['name' => 'Sick Leave'], ['days_per_year' => 15]);
+            LeaveType::query()->firstOrCreate(['name' => 'Unpaid Leave'], ['days_per_year' => null, 'is_paid' => false]);
+
+            // Monthly salaries (EGP) so payroll has something to calculate.
+            foreach (self::SALARIES as $code => $amount) {
+                Salary::create([
+                    'employee_id' => $employees[$code]->id, 'amount' => $amount, 'currency' => 'EGP',
+                    'effective_from' => now()->startOfYear()->toDateString(), 'note' => 'Demo salary',
+                ]);
+            }
+
+            // A few requests around today so the dashboard has content.
+            $today = CarbonImmutable::today();
+            $nextWeek = $today->next(CarbonImmutable::SUNDAY);
+
+            $approved = $this->leave->submit($employees['EMP-002'], $annual, $today->subDay(), $today->addDays(2), 'Family trip');
+            $this->leave->decide($approved, $decider, LeaveStatus::Approved, 'Enjoy!');
+
+            $this->leave->submit($employees['EMP-001'], $annual, $nextWeek->addWeek(), $nextWeek->addWeek()->addDays(3), 'Vacation');
+            $this->leave->submit($employees['EMP-004'], $sick, $nextWeek, $nextWeek->addDay(), 'Medical appointment');
+
+            $rejected = $this->leave->submit($employees['EMP-005'], $annual, $nextWeek->addWeeks(3), $nextWeek->addWeeks(3)->addDays(4), 'Conference');
+            $this->leave->decide($rejected, $decider, LeaveStatus::Rejected, 'End-of-quarter sales push; please pick another week.');
+
+            return $logins;
+        }));
+    }
+}
